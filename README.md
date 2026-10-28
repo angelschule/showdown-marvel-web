@@ -10,8 +10,9 @@ Reines Spass-Nebenprojekt: zaehlt nicht fuer M320 (Konsole) oder M322 (Figma/Pap
 - `server/` - Node.js + Express + Socket.IO. Haelt den Spielzustand (wer welche Karten hat,
   wer am Zug ist) und validiert jede Aktion ueber dieselbe Spiellogik wie die Java-Version.
   Muss dauerhaft laufen (z. B. auf Render.com), weil GitHub Pages keine Server ausfuehrt.
-- `client/` - reines HTML/CSS/JS, verbindet sich per WebSocket (Socket.IO) zum Server.
-  Kann direkt auf GitHub Pages gehostet werden (nur statische Dateien).
+- `docs/` - reines HTML/CSS/JS, verbindet sich per WebSocket (Socket.IO) zum Server.
+  Heisst bewusst `docs/`, weil GitHub Pages diesen Ordnernamen direkt unterstuetzt
+  (Settings -> Pages -> Branch `main`, Ordner `/docs`), ohne Workaround.
 
 Warum zwei getrennte Teile? GitHub Pages kann nur Dateien ausliefern, aber online mit
 zwei Leuten in Echtzeit spielen braucht einen Server, der beide Browser miteinander verbindet.
@@ -43,10 +44,10 @@ Verbinden ca. 30-60 Sekunden zum Aufwachen - danach laeuft er normal.)
 
 ### 2. Frontend auf GitHub Pages
 
-1. In `client/app.js` die Zeile mit `DEIN-SERVER.onrender.com` durch deine echte Render-URL ersetzen.
-2. Im GitHub-Repo: Settings -> Pages -> Source auf den Branch/Ordner mit `client/` stellen
-   (am einfachsten: `client/`-Inhalt in einen eigenen Branch `gh-pages` oder nach `/docs` kopieren).
-3. GitHub gibt dir eine URL wie `https://deinname.github.io/reponame/` - die schickst du deinen Freunden.
+1. In `docs/app.js` die Zeile mit `DEIN-SERVER.onrender.com` durch deine echte Render-URL ersetzen, committen, pushen.
+2. Im GitHub-Repo: Settings -> Pages -> Source: "Deploy from a branch" -> Branch `main`, Ordner `/docs` -> Save.
+3. GitHub gibt dir nach ein bis zwei Minuten eine URL wie `https://angelschule.github.io/showdown-marvel-web/` -
+   die schickst du deinen Freunden.
 
 ## Regel-Abgleich mit der Java-Version
 

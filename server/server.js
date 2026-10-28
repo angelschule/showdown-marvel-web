@@ -8,7 +8,7 @@ const { alleHelden } = require('./heldendaten');
 const { Spiel, SpielerZustand } = require('./spiel');
 
 const app = express();
-app.use(express.static(path.join(__dirname, '..', 'client')));
+app.use(express.static(path.join(__dirname, '..', 'docs')));
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
