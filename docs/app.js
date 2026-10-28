@@ -1,7 +1,7 @@
 // Nach dem Deployment anpassen: die URL deines gehosteten Servers (z. B. Render).
 const SOCKET_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? `${location.protocol}//${location.hostname}:3001`
-  : 'https://DEIN-SERVER.onrender.com'; // TODO: nach dem Server-Deployment ersetzen
+  : 'https://showdown-marvel-web.onrender.com';
 
 const socket = io(SOCKET_URL);
 
