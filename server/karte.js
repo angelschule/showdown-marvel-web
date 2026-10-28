@@ -36,8 +36,8 @@ class Karte {
   constructor(name, werte) {
     if (werte) {
       for (const w of werte) {
-        if (w < 1 || w > 7) {
-          throw new Error(`Power-Grid-Werte muessen zwischen 1 und 7 liegen, war ${w}`);
+        if (w < 1 || w > 10) {
+          throw new Error(`Power-Grid-Werte muessen zwischen 1 und 10 liegen, war ${w}`);
         }
       }
     }

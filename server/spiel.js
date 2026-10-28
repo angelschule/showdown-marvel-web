@@ -1,9 +1,9 @@
-// Generalisierte Spiellogik fuer 2 bis 4 Spieler (statt fest A/B).
-// Gleiche Grundregeln wie die Java-2-Spieler-Version, auf N Spieler erweitert:
-// - jede Runde spielen alle noch aktiven Spieler (mit Karten) gleichzeitig ihre oberste Karte
-// - bei echtem Gleichstand an der Spitze (kein eindeutiger Schurke dabei) wandern ALLE
-//   Karten dieser Runde in den Pot, die naechste entschiedene Runde gewinnt alles
-// - Team-Ultimate wirkt auf ALLE anderen aktiven Spieler statt auf einen festen Gegner
+// Generalisierte Spiellogik fuer 2 bis 4 Spieler.
+// Neu gegenueber der Konsolen-Version: nur der aktive Kategorie-Waehler zieht seine
+// oberste Karte blind (wie gehabt). Alle anderen ("Antwortspieler") duerfen sich eine
+// beliebige Karte aus ihrer eigenen restlichen Hand aussuchen, statt automatisch die
+// oberste zu spielen - diese Auswahl passiert in server.js, Spiel bekommt hier nur das
+// Ergebnis (wer spielt welche schon aus der Hand entfernte Karte).
 
 const { kategorieIndex } = require('./karte');
 
@@ -30,6 +30,20 @@ class SpielerZustand {
 
   obersteKarte() {
     return this.stapel.length ? this.stapel[0] : null;
+  }
+
+  // Entfernt eine bestimmte Karte (per Name) aus der Hand - fuer die freie Kartenwahl
+  // der Antwortspieler. Gibt null zurueck, falls die Karte nicht (mehr) da ist.
+  entferneKarte(name) {
+    const i = this.stapel.findIndex((k) => k.name === name);
+    if (i === -1) return null;
+    return this.stapel.splice(i, 1)[0];
+  }
+
+  ziehZufaelligeKarte() {
+    if (!this.stapel.length) return null;
+    const i = Math.floor(Math.random() * this.stapel.length);
+    return this.stapel.splice(i, 1)[0];
   }
 
   hatKarten() {
@@ -72,21 +86,29 @@ class Spiel {
     return this.spieler.filter((s) => s.hatKarten());
   }
 
-  spieleRunde(kategorieName, ultimateSpielerIndex) {
-    kategorieIndex(kategorieName); // validiert zuerst, bevor ueberhaupt Karten gezogen werden
-    const aktive = this.aktiveSpieler();
-    if (aktive.length < 2) {
-      throw new Error('Es muessen mindestens 2 Spieler Karten haben, um eine Runde zu spielen');
+  /**
+   * Loest eine Runde auf. kartenProSpieler ist eine Map<spielerIndex, Karte> -
+   * die Karten wurden von server.js bereits aus den jeweiligen Haenden entfernt
+   * (oberste Karte beim aktiven Waehler, frei gewaehlte Karte bei allen anderen).
+   */
+  loeseRundeAuf(kategorieName, kartenProSpieler, ultimateSpielerIndex) {
+    kategorieIndex(kategorieName);
+    if (kartenProSpieler.size < 2) {
+      throw new Error('Es muessen mindestens 2 Karten gespielt werden');
     }
 
     this.runde += 1;
-    const gezogen = aktive.map((spieler) => ({ spieler, karte: spieler.ziehKarte() }));
+    const eintraege = [...kartenProSpieler.entries()].map(([index, karte]) => ({
+      index,
+      spieler: this.spieler[index],
+      karte,
+    }));
 
     const kontext = new Rundenkontext(kategorieName);
     let ultimateMeldung = null;
     let ultimateSpieler = null;
     if (ultimateSpielerIndex !== null && ultimateSpielerIndex !== undefined) {
-      const eintrag = gezogen.find((g) => this.spieler.indexOf(g.spieler) === ultimateSpielerIndex);
+      const eintrag = eintraege.find((e) => e.index === ultimateSpielerIndex);
       if (eintrag) {
         ultimateSpieler = eintrag.spieler;
         ultimateMeldung = eintrag.spieler.nutzeUltimate(eintrag.karte, kontext);
@@ -94,12 +116,12 @@ class Spiel {
     }
 
     const effektiveKategorie = kontext.kategorie;
-    const bewertet = gezogen.map(({ spieler, karte }) => {
+    const bewertet = eintraege.map(({ index, spieler, karte }) => {
       let wert = karte.wert(effektiveKategorie);
       if (ultimateSpieler) {
         wert += spieler === ultimateSpieler ? kontext.eigenerBonus : kontext.andereBonus;
       }
-      return { spieler, karte, wert };
+      return { index, spieler, karte, wert };
     });
 
     const maxWert = Math.max(...bewertet.map((b) => b.wert));
@@ -116,12 +138,12 @@ class Spiel {
       // sonst: echter Gleichstand - niemand gewinnt diese Runde, alles in den Pot
     }
 
-    const alleKartenDieserRunde = gezogen.map((g) => g.karte);
+    const alleKartenDieserRunde = eintraege.map((e) => e.karte);
     let assembleBonusAktiv = false;
 
     if (!gewinnerEintrag) {
       this.pot.push(...alleKartenDieserRunde);
-      aktive.forEach((s) => { s.siegeInSerie = 0; });
+      eintraege.forEach((e) => { e.spieler.siegeInSerie = 0; });
     } else {
       const gewinner = gewinnerEintrag.spieler;
       assembleBonusAktiv = gewinner.hatAssembleBonus();
@@ -131,30 +153,27 @@ class Spiel {
         gewinner.stapel.push(...this.pot);
         this.pot = [];
       }
-
-      // ASSEMBLE: diese Runde zaehlt doppelt - der Gewinner zieht zusaetzlich
-      // von jedem anderen aktiven Spieler eine Karte, falls vorhanden.
       if (assembleBonusAktiv) {
-        aktive.forEach((s) => {
-          if (s !== gewinner) {
-            const bonusKarte = s.ziehKarte();
+        eintraege.forEach((e) => {
+          if (e.spieler !== gewinner) {
+            const bonusKarte = e.spieler.ziehZufaelligeKarte();
             if (bonusKarte) gewinner.stapel.push(bonusKarte);
           }
         });
       }
 
       gewinner.siegeInSerie += 1;
-      aktive.forEach((s) => { if (s !== gewinner) s.siegeInSerie = 0; });
+      eintraege.forEach((e) => { if (e.spieler !== gewinner) e.spieler.siegeInSerie = 0; });
     }
 
     return {
       kategorie: effektiveKategorie,
       ergebnisse: bewertet.map((b) => ({
-        spielerIndex: this.spieler.indexOf(b.spieler),
+        spielerIndex: b.index,
         karte: b.karte,
         wert: b.wert,
       })),
-      gewinnerIndex: gewinnerEintrag ? this.spieler.indexOf(gewinnerEintrag.spieler) : null,
+      gewinnerIndex: gewinnerEintrag ? gewinnerEintrag.index : null,
       assembleBonusAktiv,
       ultimateMeldung,
     };
@@ -171,7 +190,7 @@ class Spiel {
   gewinnerIndex() {
     const rang = this.rangliste();
     if (rang.length > 1 && rang[0].anzahlKarten() === rang[1].anzahlKarten()) {
-      return null; // Unentschieden an der Spitze
+      return null;
     }
     return this.spieler.indexOf(rang[0]);
   }

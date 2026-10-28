@@ -33,7 +33,7 @@ function mischen(array) {
 }
 
 function erzeugeRaumCode() {
-  const zeichen = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // ohne leicht verwechselbare Buchstaben
+  const zeichen = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   let code;
   do {
     code = Array.from({ length: 4 }, () => zeichen[Math.floor(Math.random() * zeichen.length)]).join('');
@@ -52,7 +52,7 @@ function kartenDaten(karte) {
   };
 }
 
-function botKategorie(karte) {
+function besteKategorieFuer(karte) {
   let beste = KATEGORIEN[0];
   let bestWert = karte.wert(beste);
   for (const kategorie of KATEGORIEN) {
@@ -60,6 +60,19 @@ function botKategorie(karte) {
     if (wert > bestWert) {
       bestWert = wert;
       beste = kategorie;
+    }
+  }
+  return beste;
+}
+
+function botWaehltAntwortkarte(stapel, kategorie) {
+  let beste = stapel[0];
+  let bestWert = beste.wert(kategorie);
+  for (const karte of stapel) {
+    const wert = karte.wert(kategorie);
+    if (wert > bestWert) {
+      bestWert = wert;
+      beste = karte;
     }
   }
   return beste;
@@ -103,6 +116,7 @@ function naechsterAktiverIndex(raum, von) {
 
 function naechsterZug(raum) {
   raum.phase = 'warteAufKategorie';
+  raum.kartenAuswahl = new Map();
   const aktiv = raum.spieler[raum.aktiverIndex];
   sendeAnSitz(raum, raum.aktiverIndex, 'deinZug', {
     eigeneKarte: kartenDaten(aktiv.zustand.obersteKarte()),
@@ -117,11 +131,55 @@ function naechsterZug(raum) {
 
   if (aktiv.zustand.istBot) {
     setTimeout(() => {
-      if (raum.phase !== 'warteAufKategorie') return; // Raum wurde inzwischen aufgeloest/beendet
-      const kategorie = botKategorie(aktiv.zustand.obersteKarte());
-      raum.ausgewaehlteKategorie = kategorie;
-      starteUltimatePhase(raum);
+      if (raum.phase !== 'warteAufKategorie') return;
+      const kategorie = besteKategorieFuer(aktiv.zustand.obersteKarte());
+      waehleKategorie(raum, kategorie);
     }, BOT_DENKPAUSE_MS);
+  }
+}
+
+function waehleKategorie(raum, kategorie) {
+  raum.ausgewaehlteKategorie = kategorie;
+  const aktiv = raum.spieler[raum.aktiverIndex];
+  const eigeneKarte = aktiv.zustand.ziehKarte(); // jetzt endgueltig aus der Hand entfernt
+  raum.kartenAuswahl.set(raum.aktiverIndex, eigeneKarte);
+
+  // Alle anderen aktiven Spieler duerfen jetzt frei aus ihrer Hand antworten.
+  raum.phase = 'warteAufAntwortkarten';
+  raum.antwortenAusstehend = new Set();
+
+  raum.spieler.forEach((s, i) => {
+    if (i === raum.aktiverIndex || !s.zustand.hatKarten()) return;
+    raum.antwortenAusstehend.add(i);
+    if (s.zustand.istBot) {
+      setTimeout(() => {
+        if (raum.phase !== 'warteAufAntwortkarten' || !raum.antwortenAusstehend.has(i)) return;
+        const karte = botWaehltAntwortkarte(s.zustand.stapel, kategorie);
+        waehleAntwortkarte(raum, i, karte.name);
+      }, BOT_DENKPAUSE_MS);
+    } else {
+      sendeAnSitz(raum, i, 'waehleAntwortkarte', {
+        kategorie,
+        kategorien: KATEGORIEN,
+        hand: s.zustand.stapel.map(kartenDaten),
+      });
+    }
+  });
+
+  if (raum.antwortenAusstehend.size === 0) {
+    starteUltimatePhase(raum);
+  }
+}
+
+function waehleAntwortkarte(raum, index, kartenName) {
+  if (raum.phase !== 'warteAufAntwortkarten' || !raum.antwortenAusstehend.has(index)) return;
+  const karte = raum.spieler[index].zustand.entferneKarte(kartenName);
+  if (!karte) return; // ungueltiger/veralteter Name - ignorieren
+  raum.kartenAuswahl.set(index, karte);
+  raum.antwortenAusstehend.delete(index);
+
+  if (raum.antwortenAusstehend.size === 0) {
+    starteUltimatePhase(raum);
   }
 }
 
@@ -129,15 +187,16 @@ function starteUltimatePhase(raum) {
   raum.phase = 'warteAufUltimate';
   raum.antworten = {};
 
-  raum.spieler.forEach((s, i) => {
-    if (!s.zustand.hatKarten() || !s.zustand.istUltimateVerfuegbar()) return;
-    if (s.zustand.istBot) {
-      raum.antworten[i] = botNutztUltimate();
+  for (const [index] of raum.kartenAuswahl) {
+    const s = raum.spieler[index].zustand;
+    if (!s.istUltimateVerfuegbar()) continue;
+    if (s.istBot) {
+      raum.antworten[index] = botNutztUltimate();
     } else {
-      raum.antworten[i] = null;
-      sendeAnSitz(raum, i, 'ultimateAbfrage', {});
+      raum.antworten[index] = null;
+      sendeAnSitz(raum, index, 'ultimateAbfrage', {});
     }
-  });
+  }
 
   versucheRundeAufzuloesen(raum);
 }
@@ -157,7 +216,7 @@ function versucheRundeAufzuloesen(raum) {
 
   let ergebnis;
   try {
-    ergebnis = raum.spiel.spieleRunde(raum.ausgewaehlteKategorie, ultimateSpielerIndex);
+    ergebnis = raum.spiel.loeseRundeAuf(raum.ausgewaehlteKategorie, raum.kartenAuswahl, ultimateSpielerIndex);
   } catch (e) {
     sendeAnAlle(raum, 'fehler', { nachricht: e.message });
     naechsterZug(raum);
@@ -234,6 +293,8 @@ io.on('connection', (socket) => {
       phase: 'lobby',
       aktiverIndex: 0,
       ausgewaehlteKategorie: null,
+      kartenAuswahl: new Map(),
+      antwortenAusstehend: new Set(),
       antworten: null,
     };
     raeume.set(code, raum);
@@ -253,6 +314,8 @@ io.on('connection', (socket) => {
       phase: 'lobby',
       aktiverIndex: 0,
       ausgewaehlteKategorie: null,
+      kartenAuswahl: new Map(),
+      antwortenAusstehend: new Set(),
       antworten: null,
     };
     raeume.set(code, raum);
@@ -316,8 +379,13 @@ io.on('connection', (socket) => {
       socket.emit('fehler', { nachricht: e.message });
       return;
     }
-    raum.ausgewaehlteKategorie = kategorie;
-    starteUltimatePhase(raum);
+    waehleKategorie(raum, kategorie);
+  });
+
+  socket.on('antwortKarteWaehlen', ({ kartenName } = {}) => {
+    const raum = raeume.get(socket.data.raumCode);
+    if (!raum) return;
+    waehleAntwortkarte(raum, socket.data.sitz, kartenName);
   });
 
   socket.on('ultimateAntwort', ({ ja } = {}) => {

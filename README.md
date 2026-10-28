@@ -18,9 +18,19 @@ Reines Spass-Nebenprojekt: zaehlt nicht fuer M320 (Konsole) oder M322 (Figma/Pap
   bis zu 3 weitere Spieler treten bei. Der Host kann leere Plaetze mit Bots auffuellen und
   startet das Spiel manuell, sobald mindestens 2 Spieler da sind.
 
-Bei mehr als 2 Spielern spielen alle noch aktiven Spieler jede Runde gleichzeitig ihre oberste
-Karte; bei echtem Gleichstand (kein eindeutiger Schurke an der Spitze) wandern alle Karten
-dieser Runde in den Pot, die naechste entschiedene Runde gewinnt alles.
+Bei mehr als 2 Spielern spielen alle noch aktiven Spieler jede Runde gleichzeitig eine Karte;
+bei echtem Gleichstand (kein eindeutiger Schurke an der Spitze) wandern alle Karten dieser
+Runde in den Pot, die naechste entschiedene Runde gewinnt alles.
+
+**Antwortkarte frei waehlen:** Nur der aktive Spieler, der die Kategorie vorgibt, zieht blind
+seine oberste Karte (wie bei einem klassischen Quartett). Alle anderen sehen danach die
+Kategorie und duerfen sich frei die staerkste (oder taktisch beste) Karte aus ihrer kompletten
+restlichen Hand aussuchen - jede Hand-Karte zeigt sofort ihren Wert in der aktuellen Kategorie.
+Der Bot waehlt dabei automatisch seine staerkste Karte fuer die jeweilige Kategorie.
+
+**Power-Grid-Skala:** 1-10 statt der urspruenglichen 1-7 (feinere Abstufung zwischen den
+Charakteren). Team-Werte koennen durch "hoechster Wert + 1 pro weiterem Mitglied" deutlich
+ueber 10 liegen - das ist beabsichtigt.
 
 ## Architektur
 
@@ -70,14 +80,16 @@ Verbinden ca. 30-60 Sekunden zum Aufwachen - danach laeuft er normal.)
 
 | Regel | Java (Konsole) | Web | Status |
 |---|---|---|---|
-| 6 Power-Grid-Werte, 1-7 | `Karte.wert()` | `karte.js: wert()` | identisch |
+| 6 Power-Grid-Werte | `Karte.wert()` (Skala 1-7) | `karte.js: wert()` (Skala 1-10) | gleiche Struktur, Web hat feinere Skala |
 | Team-Wert = hoechster + 1/Mitglied | `TeamKarte.wert()` | `TeamKarte.wert()` | identisch |
 | Schurke gewinnt Gleichstand | `gewinntGleichstand()` | gleich | identisch, getestet |
 | Ultimate 1x pro Spiel (pro Spieler) | `Spieler.nutzeUltimate()` | `SpielerZustand.nutzeUltimate()` | identisch |
 | ASSEMBLE (3 Siege in Serie = doppelt) | `Spiel.spieleRunde()` | `Spiel.spieleRunde()` | identisch |
 | 15 Runden, groesserer Stapel gewinnt | `Spiel.istVorbei()/gewinner()` | gleich | identisch |
 | Gegnerkarte bis zur Aufloesung verdeckt | n/a (Konsole zeigt lokal eh beide) | Server sendet nur die eigene Karte | Web ist hier sogar fairer |
-| 44 Charaktere, gleiche Werte | `Heldendaten.java` | `heldendaten.js` | 1:1 abgeschrieben |
+| 44 Charaktere | `Heldendaten.java` | `heldendaten.js` | gleiche Charaktere, Werte auf 1-10 umgerechnet |
+| Kategorie-Wahl: oberste Karte | gilt fuer beide Spieler | gilt nur fuer den aktiven Waehler | bewusste Web-Erweiterung, siehe oben |
+| Antwortkarte frei waehlen | nein (immer oberste Karte) | ja, aus der kompletten Hand | bewusste Web-Erweiterung |
 
 Die Server-Datei validiert Kategorien und Spielzustand genauso wie die Java-Klassen
 (ungueltige Kategorie oder zweites Ultimate wirft einen Fehler, der sauber als `fehler`-Event

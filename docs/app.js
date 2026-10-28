@@ -137,12 +137,14 @@ const ultimateBereich = document.getElementById('ultimate-bereich');
 const ergebnisBereich = document.getElementById('ergebnis-bereich');
 const statusZeile = document.getElementById('status-zeile');
 
+const MAX_WERT = 10;
+
 function kartenHtml(karte, besitzerLabel) {
   const typKlasse = karte.typSymbol.toLowerCase();
   const balken = karte.werte
     .map((wert, i) => {
       const kategorieName = KATEGORIEN_ANZEIGE[i] || '';
-      const prozent = Math.round((wert / 7) * 100);
+      const prozent = Math.round((wert / MAX_WERT) * 100);
       return `
         <div class="stat-zeile">
           <span>${kategorieName}</span>
@@ -153,16 +155,19 @@ function kartenHtml(karte, besitzerLabel) {
     .join('');
 
   return `
-    <div class="titel">
-      <div>
-        ${besitzerLabel ? `<div class="besitzer">${besitzerLabel}</div>` : ''}
-        <span class="name">${karte.name}</span>
-      </div>
+    <div class="bild-rahmen">
+      <img class="karten-bild" src="images/${karte.bildSchluessel}.jpg"
+           onerror="this.onerror=null;this.closest('.spielkarte').classList.add('kein-bild');"
+           alt="" />
+      <div class="bild-platzhalter" aria-hidden="true"></div>
       <span class="typ-tag ${typKlasse}">${karte.typSymbol}</span>
+      ${besitzerLabel ? `<div class="besitzer">${besitzerLabel}</div>` : ''}
     </div>
-    <div class="platzhalter-bild" title="Platzhalter - echtes Bild folgt (${karte.bildSchluessel})">🂠</div>
-    ${balken}
-    <div class="gesamtstaerke-zeile">Gesamtstaerke ${karte.gesamtstaerke}</div>
+    <div class="karte-info">
+      <div class="name">${karte.name}</div>
+      ${balken}
+      <div class="gesamtstaerke-zeile">GESAMT ${karte.gesamtstaerke}</div>
+    </div>
   `;
 }
 
@@ -178,6 +183,7 @@ socket.on('deinZug', ({ eigeneKarte, kategorien, index }) => {
   KATEGORIEN_ANZEIGE = kategorien;
   statusZeile.textContent = 'Du bist am Zug - waehle eine Kategorie';
   eigeneKarteBereich.classList.remove('versteckt');
+  antwortkarteBereich.classList.add('versteckt');
   ultimateBereich.classList.add('versteckt');
   ergebnisBereich.classList.add('versteckt');
   renderScoreLeiste(letzteStaende, index);
@@ -204,9 +210,47 @@ socket.on('deinZug', ({ eigeneKarte, kategorien, index }) => {
 socket.on('wartenAufSpieler', ({ name, index }) => {
   statusZeile.textContent = `${name} waehlt gerade die Kategorie...`;
   eigeneKarteBereich.classList.add('versteckt');
+  antwortkarteBereich.classList.add('versteckt');
   ultimateBereich.classList.add('versteckt');
   ergebnisBereich.classList.add('versteckt');
   renderScoreLeiste(letzteStaende, index);
+});
+
+// ---------- Antwortkarte frei waehlen ----------
+
+const antwortkarteBereich = document.getElementById('antwortkarte-bereich');
+
+function handKarteHtml(karte, kategorie, kategorien) {
+  const index = kategorien.indexOf(kategorie);
+  const wert = index >= 0 ? karte.werte[index] : '?';
+  const typKlasse = karte.typSymbol.toLowerCase();
+  return `
+    <div class="hand-karte ${typKlasse}" data-name="${karte.name}">
+      <span class="typ-tag ${typKlasse}">${karte.typSymbol}</span>
+      <div class="hand-karte-name">${karte.name}</div>
+      <div class="hand-karte-wert">${wert}</div>
+      <div class="hand-karte-label">${kategorie}</div>
+    </div>`;
+}
+
+socket.on('waehleAntwortkarte', ({ kategorie, kategorien, hand }) => {
+  KATEGORIEN_ANZEIGE = kategorien;
+  statusZeile.textContent = `Kategorie: ${kategorie} - waehle deine Antwortkarte`;
+  eigeneKarteBereich.classList.add('versteckt');
+  ultimateBereich.classList.add('versteckt');
+  ergebnisBereich.classList.add('versteckt');
+  antwortkarteBereich.classList.remove('versteckt');
+
+  document.getElementById('antwortkarte-hinweis').textContent = `Kategorie: ${kategorie}`;
+  const raster = document.getElementById('hand-raster');
+  raster.innerHTML = hand.map((karte) => handKarteHtml(karte, kategorie, kategorien)).join('');
+  raster.querySelectorAll('.hand-karte').forEach((el) => {
+    el.addEventListener('click', () => {
+      socket.emit('antwortKarteWaehlen', { kartenName: el.dataset.name });
+      antwortkarteBereich.classList.add('versteckt');
+      statusZeile.textContent = 'Warte auf die anderen Spieler...';
+    });
+  });
 });
 
 // ---------- Ultimate ----------
@@ -231,16 +275,17 @@ document.getElementById('btn-ultimate-nein').addEventListener('click', () => {
 
 socket.on('rundenErgebnis', (ergebnis) => {
   eigeneKarteBereich.classList.add('versteckt');
+  antwortkarteBereich.classList.add('versteckt');
   ultimateBereich.classList.add('versteckt');
   ergebnisBereich.classList.remove('versteckt');
   statusZeile.textContent = '';
 
-  // Clash-Titel neu antriggern (Animation zuruecksetzen)
-  const clash = document.getElementById('clash-titel');
-  clash.style.animation = 'none';
+  // Impact-Titel neu antriggern (Animation zuruecksetzen)
+  const impakt = document.getElementById('impakt-titel');
+  impakt.style.animation = 'none';
   // eslint-disable-next-line no-unused-expressions
-  clash.offsetHeight;
-  clash.style.animation = '';
+  impakt.offsetHeight;
+  impakt.style.animation = '';
 
   const raster = document.getElementById('duell-raster');
   raster.innerHTML = '';

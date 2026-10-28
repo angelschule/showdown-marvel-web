@@ -6,14 +6,15 @@
   <title>SHOWDOWN - Marvel Quartett</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="halftone-overlay"></div>
+  <div class="vignette-overlay"></div>
+  <div class="grain-overlay"></div>
   <div id="app">
     <header class="kopfzeile">
-      <h1 class="comic-titel" data-text="SHOWDOWN">SHOWDOWN</h1>
+      <h1 class="titel-hero" data-text="SHOWDOWN">SHOWDOWN</h1>
       <span class="unterzeile">MARVEL QUARTETT</span>
     </header>
 
@@ -52,7 +53,7 @@
 
     <!-- Lobby -->
     <section id="lobby-bildschirm" class="bildschirm versteckt">
-      <h2 class="comic-untertitel">WARTE AUF HELDEN...</h2>
+      <h2 class="titel-sektion">BEREIT MACHEN...</h2>
       <p>Teile diesen Code:</p>
       <div id="raum-code-anzeige" class="raum-code"></div>
 
@@ -78,6 +79,12 @@
         <div id="kategorie-buttons" class="kategorie-buttons"></div>
       </div>
 
+      <div id="antwortkarte-bereich" class="karten-bereich versteckt">
+        <h3 class="mini-titel">Waehle deine Antwortkarte</h3>
+        <p id="antwortkarte-hinweis" class="hinweis"></p>
+        <div id="hand-raster" class="hand-raster"></div>
+      </div>
+
       <div id="ultimate-bereich" class="ultimate-bereich versteckt">
         <p class="ultimate-frage">⚡ ULTIMATE EINSETZEN? ⚡</p>
         <p class="ultimate-hinweis">(nur 1x pro Spiel)</p>
@@ -88,7 +95,7 @@
       </div>
 
       <div id="ergebnis-bereich" class="ergebnis-bereich versteckt">
-        <div class="clash-titel" id="clash-titel">CLASH!</div>
+        <div class="impakt-titel" id="impakt-titel">IMPACT</div>
         <div id="duell-raster" class="duell-raster"></div>
         <p id="ultimate-meldung" class="ultimate-meldung"></p>
         <p id="ergebnis-text" class="ergebnis-text"></p>
@@ -97,7 +104,7 @@
 
     <!-- Spielende -->
     <section id="ende-bildschirm" class="bildschirm versteckt">
-      <h2 class="comic-untertitel" id="ende-titel">SPIEL VORBEI</h2>
+      <h2 class="titel-sektion" id="ende-titel">SPIEL VORBEI</h2>
       <ol id="ende-rangliste" class="rangliste"></ol>
       <button id="btn-neustart" class="btn btn-primaer">Neues Spiel</button>
     </section>
