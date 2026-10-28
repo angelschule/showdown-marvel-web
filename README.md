@@ -1,5 +1,9 @@
 # SHOWDOWN - Marvel Quartett (Web, Online-Multiplayer)
 
+**Live spielen:** https://angelschule.github.io/showdown-marvel-web/
+(Server auf Render: https://showdown-marvel-web.onrender.com - schlaeft nach Inaktivitaet ein,
+erster Verbindungsaufbau kann dann 30-60s dauern)
+
 Browser-Version der Konsolen-App unter `Projekt/ShowdownMarvelQuartett` - gleiche Regeln,
 gleiche Charaktere, jetzt mit zwei Spielern über das Internet statt an einer Konsole.
 
