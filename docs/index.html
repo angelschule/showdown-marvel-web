@@ -4,69 +4,92 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SHOWDOWN - Marvel Quartett</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div class="halftone-overlay"></div>
   <div id="app">
     <header class="kopfzeile">
-      <h1>SHOWDOWN <span class="unterzeile">Marvel Quartett</span></h1>
+      <h1 class="comic-titel" data-text="SHOWDOWN">SHOWDOWN</h1>
+      <span class="unterzeile">MARVEL QUARTETT</span>
     </header>
 
-    <!-- Startbildschirm: Raum erstellen oder beitreten -->
+    <!-- Startbildschirm -->
     <section id="start-bildschirm" class="bildschirm">
-      <div class="karte-panel">
-        <h2>Neues Spiel</h2>
+      <div class="panel panel-bot">
+        <div class="panel-badge">SOLO</div>
+        <h2>Gegen Bot spielen</h2>
+        <p class="panel-text">Sofort losduellieren gegen die Konsole.</p>
+        <label>Dein Name</label>
+        <input id="name-bot" type="text" placeholder="z. B. Angel" maxlength="20" />
+        <button id="btn-bot-starten" class="btn btn-primaer">Bot-Duell starten</button>
+      </div>
+
+      <div class="panel panel-erstellen">
+        <div class="panel-badge">1-4 SPIELER</div>
+        <h2>Raum erstellen</h2>
+        <p class="panel-text">Online mit bis zu 3 Freunden spielen.</p>
         <label>Dein Name</label>
         <input id="name-erstellen" type="text" placeholder="z. B. Angel" maxlength="20" />
-        <button id="btn-raum-erstellen" class="primaer">Raum erstellen</button>
+        <button id="btn-raum-erstellen" class="btn btn-sekundaer">Raum erstellen</button>
       </div>
-      <div class="karte-panel">
-        <h2>Beitreten</h2>
+
+      <div class="panel panel-beitreten">
+        <div class="panel-badge">BEITRETEN</div>
+        <h2>Raum beitreten</h2>
         <label>Dein Name</label>
         <input id="name-beitreten" type="text" placeholder="z. B. Alex" maxlength="20" />
         <label>Raum-Code</label>
         <input id="code-beitreten" type="text" placeholder="z. B. KPXR" maxlength="4" style="text-transform:uppercase" />
-        <button id="btn-raum-beitreten" class="sekundaer">Beitreten</button>
+        <button id="btn-raum-beitreten" class="btn btn-sekundaer">Beitreten</button>
       </div>
+
       <p id="start-fehler" class="fehler"></p>
     </section>
 
-    <!-- Warteraum -->
-    <section id="warte-bildschirm" class="bildschirm versteckt">
-      <h2>Warte auf Gegner...</h2>
-      <p>Gib deinem Freund / deiner Freundin diesen Code:</p>
+    <!-- Lobby -->
+    <section id="lobby-bildschirm" class="bildschirm versteckt">
+      <h2 class="comic-untertitel">WARTE AUF HELDEN...</h2>
+      <p>Teile diesen Code:</p>
       <div id="raum-code-anzeige" class="raum-code"></div>
-      <p class="hinweis">Sobald jemand beitritt, startet das Spiel automatisch.</p>
+
+      <ul id="lobby-spielerliste" class="spielerliste"></ul>
+
+      <div id="lobby-host-steuerung" class="host-steuerung versteckt">
+        <button id="btn-bot-hinzufuegen" class="btn btn-sekundaer">+ Bot hinzufuegen</button>
+        <button id="btn-spiel-starten" class="btn btn-primaer" disabled>Spiel starten</button>
+      </div>
+      <p id="lobby-hinweis" class="hinweis">Warte, bis der Host startet...</p>
     </section>
 
     <!-- Spielbildschirm -->
     <section id="spiel-bildschirm" class="bildschirm versteckt">
-      <div class="score-leiste">
-        <span id="score-eigen">Du: 0 Karten</span>
-        <span id="runden-anzeige">Runde 0 / 15</span>
-        <span id="score-gegner">Gegner: 0 Karten</span>
-      </div>
+      <div id="score-leiste" class="score-leiste"></div>
+      <div id="runden-anzeige" class="runden-anzeige">RUNDE 0 / 15</div>
 
       <div id="status-zeile" class="status-zeile"></div>
 
       <div id="eigene-karte-bereich" class="karten-bereich versteckt">
-        <h3>Deine oberste Karte</h3>
+        <h3 class="mini-titel">Deine oberste Karte</h3>
         <div id="eigene-karte" class="spielkarte"></div>
         <div id="kategorie-buttons" class="kategorie-buttons"></div>
       </div>
 
       <div id="ultimate-bereich" class="ultimate-bereich versteckt">
-        <p>Willst du dein Ultimate einsetzen? (nur 1x pro Spiel)</p>
-        <button id="btn-ultimate-ja" class="primaer">Ja, einsetzen</button>
-        <button id="btn-ultimate-nein" class="sekundaer">Nein</button>
+        <p class="ultimate-frage">⚡ ULTIMATE EINSETZEN? ⚡</p>
+        <p class="ultimate-hinweis">(nur 1x pro Spiel)</p>
+        <div class="ultimate-knoepfe">
+          <button id="btn-ultimate-ja" class="btn btn-primaer">Ja, einsetzen!</button>
+          <button id="btn-ultimate-nein" class="btn btn-sekundaer">Nein</button>
+        </div>
       </div>
 
       <div id="ergebnis-bereich" class="ergebnis-bereich versteckt">
-        <div class="duell">
-          <div id="ergebnis-karte-a" class="spielkarte"></div>
-          <div class="vs">VS</div>
-          <div id="ergebnis-karte-b" class="spielkarte"></div>
-        </div>
+        <div class="clash-titel" id="clash-titel">CLASH!</div>
+        <div id="duell-raster" class="duell-raster"></div>
         <p id="ultimate-meldung" class="ultimate-meldung"></p>
         <p id="ergebnis-text" class="ergebnis-text"></p>
       </div>
@@ -74,8 +97,9 @@
 
     <!-- Spielende -->
     <section id="ende-bildschirm" class="bildschirm versteckt">
-      <h2 id="ende-text"></h2>
-      <button id="btn-neustart" class="primaer">Neues Spiel</button>
+      <h2 class="comic-untertitel" id="ende-titel">SPIEL VORBEI</h2>
+      <ol id="ende-rangliste" class="rangliste"></ol>
+      <button id="btn-neustart" class="btn btn-primaer">Neues Spiel</button>
     </section>
   </div>
 

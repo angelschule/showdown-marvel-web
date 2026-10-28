@@ -5,9 +5,22 @@
 erster Verbindungsaufbau kann dann 30-60s dauern)
 
 Browser-Version der Konsolen-App unter `Projekt/ShowdownMarvelQuartett` - gleiche Regeln,
-gleiche Charaktere, jetzt mit zwei Spielern über das Internet statt an einer Konsole.
+gleiche Charaktere, jetzt mit 2-4 Spielern über das Internet statt an einer Konsole,
+plus ein Solo-Modus gegen einen Bot.
 
 Reines Spass-Nebenprojekt: zaehlt nicht fuer M320 (Konsole) oder M322 (Figma/Papier, kein Code).
+
+## Spielmodi
+
+- **Gegen Bot** - sofortiges 1-gegen-1 gegen eine einfache KI (waehlt die Kategorie, in der
+  ihre Karte am staerksten ist; setzt ihr Ultimate mit 30% Zufallschance ein, wenn verfuegbar).
+- **Online-Raum (2-4 Spieler)** - der Host erstellt einen Raum, teilt den 4-Buchstaben-Code,
+  bis zu 3 weitere Spieler treten bei. Der Host kann leere Plaetze mit Bots auffuellen und
+  startet das Spiel manuell, sobald mindestens 2 Spieler da sind.
+
+Bei mehr als 2 Spielern spielen alle noch aktiven Spieler jede Runde gleichzeitig ihre oberste
+Karte; bei echtem Gleichstand (kein eindeutiger Schurke an der Spitze) wandern alle Karten
+dieser Runde in den Pot, die naechste entschiedene Runde gewinnt alles.
 
 ## Architektur
 

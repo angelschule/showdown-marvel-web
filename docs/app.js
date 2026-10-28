@@ -1,4 +1,4 @@
-// Nach dem Deployment anpassen: die URL deines gehosteten Servers (z. B. Render).
+// Nach dem Deployment anpassen, falls der Server umzieht.
 const SOCKET_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? `${location.protocol}//${location.hostname}:3001`
   : 'https://showdown-marvel-web.onrender.com';
@@ -7,7 +7,7 @@ const socket = io(SOCKET_URL);
 
 const bildschirme = {
   start: document.getElementById('start-bildschirm'),
-  warte: document.getElementById('warte-bildschirm'),
+  lobby: document.getElementById('lobby-bildschirm'),
   spiel: document.getElementById('spiel-bildschirm'),
   ende: document.getElementById('ende-bildschirm'),
 };
@@ -18,10 +18,29 @@ function zeigeBildschirm(name) {
 }
 
 function setzeFehler(text) {
-  document.getElementById('start-fehler').textContent = text || '';
+  const istSpielAktiv = !bildschirme.spiel.classList.contains('versteckt');
+  if (istSpielAktiv) {
+    const status = document.getElementById('status-zeile');
+    const alt = status.textContent;
+    status.textContent = text;
+    setTimeout(() => { status.textContent = alt; }, 2500);
+  } else {
+    document.getElementById('start-fehler').textContent = text || '';
+  }
 }
 
+let meinIndex = null;
+let spielerListe = [];
+let KATEGORIEN_ANZEIGE = [];
+let letzteStaende = [];
+
 // ---------- Startbildschirm ----------
+
+document.getElementById('btn-bot-starten').addEventListener('click', () => {
+  const name = document.getElementById('name-bot').value.trim();
+  setzeFehler('');
+  socket.emit('botSpielStarten', { name });
+});
 
 document.getElementById('btn-raum-erstellen').addEventListener('click', () => {
   const name = document.getElementById('name-erstellen').value.trim();
@@ -40,28 +59,76 @@ document.getElementById('btn-raum-beitreten').addEventListener('click', () => {
   socket.emit('raumBeitreten', { name, code });
 });
 
-socket.on('raumErstellt', ({ code }) => {
+socket.on('fehler', ({ nachricht }) => setzeFehler(nachricht));
+
+// ---------- Lobby ----------
+
+socket.on('raumErstellt', ({ code, meinIndex: idx }) => {
+  meinIndex = idx;
   document.getElementById('raum-code-anzeige').textContent = code;
-  zeigeBildschirm('warte');
+  zeigeBildschirm('lobby');
 });
 
-socket.on('fehler', ({ nachricht }) => {
-  setzeFehler(nachricht);
+socket.on('raumBeigetreten', ({ code, meinIndex: idx }) => {
+  meinIndex = idx;
+  document.getElementById('raum-code-anzeige').textContent = code;
+  zeigeBildschirm('lobby');
+});
+
+socket.on('lobbyUpdate', ({ hostIndex, spieler, maxSpieler }) => {
+  const liste = document.getElementById('lobby-spielerliste');
+  liste.innerHTML = '';
+  spieler.forEach((s, i) => {
+    const li = document.createElement('li');
+    const tags = [];
+    if (i === hostIndex) tags.push('<span class="tag host">HOST</span>');
+    if (s.istBot) tags.push('<span class="tag bot">BOT</span>');
+    li.innerHTML = `<span>${s.name}</span><span>${tags.join(' ')}</span>`;
+    liste.appendChild(li);
+  });
+
+  const binHost = meinIndex === hostIndex;
+  const steuerung = document.getElementById('lobby-host-steuerung');
+  const hinweis = document.getElementById('lobby-hinweis');
+  steuerung.classList.toggle('versteckt', !binHost);
+  hinweis.classList.toggle('versteckt', binHost);
+
+  if (binHost) {
+    document.getElementById('btn-bot-hinzufuegen').disabled = spieler.length >= maxSpieler;
+    document.getElementById('btn-spiel-starten').disabled = spieler.length < 2;
+  }
+});
+
+document.getElementById('btn-bot-hinzufuegen').addEventListener('click', () => {
+  socket.emit('botHinzufuegen');
+});
+
+document.getElementById('btn-spiel-starten').addEventListener('click', () => {
+  socket.emit('spielStarten');
 });
 
 // ---------- Spielstart ----------
 
-let eigenerName = '';
-let gegnerName = '';
-
 socket.on('spielGestartet', (daten) => {
-  eigenerName = daten.eigenerName;
-  gegnerName = daten.gegnerName;
-  document.getElementById('score-eigen').textContent = `${eigenerName}: ${daten.kartenAnzahl} Karten`;
-  document.getElementById('score-gegner').textContent = `${gegnerName}: ${daten.kartenAnzahl} Karten`;
-  document.getElementById('runden-anzeige').textContent = 'Runde 0 / 15';
+  meinIndex = daten.meinIndex;
+  spielerListe = daten.spieler;
+  letzteStaende = daten.spieler;
+  renderScoreLeiste(letzteStaende, null);
+  document.getElementById('runden-anzeige').textContent = 'RUNDE 0 / 15';
   zeigeBildschirm('spiel');
 });
+
+function renderScoreLeiste(staendeArray, aktiverIndex) {
+  const leiste = document.getElementById('score-leiste');
+  leiste.innerHTML = '';
+  staendeArray.forEach((s, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'score-chip' + (i === aktiverIndex ? ' ist-dran' : '');
+    const label = i === meinIndex ? `${s.name} (Du)` : s.name;
+    chip.innerHTML = `<span class="punkt"></span>${label}: ${s.anzahl}`;
+    leiste.appendChild(chip);
+  });
+}
 
 // ---------- Kategorie waehlen ----------
 
@@ -70,16 +137,16 @@ const ultimateBereich = document.getElementById('ultimate-bereich');
 const ergebnisBereich = document.getElementById('ergebnis-bereich');
 const statusZeile = document.getElementById('status-zeile');
 
-function kartenHtml(karte) {
+function kartenHtml(karte, besitzerLabel) {
   const typKlasse = karte.typSymbol.toLowerCase();
   const balken = karte.werte
     .map((wert, i) => {
-      const kategorieName = KATEGORIEN_ANZEIGE[i];
+      const kategorieName = KATEGORIEN_ANZEIGE[i] || '';
       const prozent = Math.round((wert / 7) * 100);
       return `
         <div class="stat-zeile">
           <span>${kategorieName}</span>
-          <div class="stat-balken"><div class="stat-balken-fuellung" style="width:${prozent}%"></div></div>
+          <div class="stat-balken"><div class="stat-balken-fuellung" data-ziel="${prozent}"></div></div>
           <span>${wert}</span>
         </div>`;
     })
@@ -87,26 +154,38 @@ function kartenHtml(karte) {
 
   return `
     <div class="titel">
-      <span class="name">${karte.name}</span>
+      <div>
+        ${besitzerLabel ? `<div class="besitzer">${besitzerLabel}</div>` : ''}
+        <span class="name">${karte.name}</span>
+      </div>
       <span class="typ-tag ${typKlasse}">${karte.typSymbol}</span>
     </div>
     <div class="platzhalter-bild" title="Platzhalter - echtes Bild folgt (${karte.bildSchluessel})">🂠</div>
     ${balken}
-    <div style="text-align:right; color:var(--muted); font-size:0.8rem; margin-top:6px;">Gesamtstaerke ${karte.gesamtstaerke}</div>
+    <div class="gesamtstaerke-zeile">Gesamtstaerke ${karte.gesamtstaerke}</div>
   `;
 }
 
-let KATEGORIEN_ANZEIGE = [];
+function animiereBalken(scope) {
+  requestAnimationFrame(() => {
+    scope.querySelectorAll('.stat-balken-fuellung[data-ziel]').forEach((el) => {
+      el.style.width = `${el.dataset.ziel}%`;
+    });
+  });
+}
 
-socket.on('deinZug', ({ eigeneKarte, kategorien }) => {
+socket.on('deinZug', ({ eigeneKarte, kategorien, index }) => {
   KATEGORIEN_ANZEIGE = kategorien;
   statusZeile.textContent = 'Du bist am Zug - waehle eine Kategorie';
   eigeneKarteBereich.classList.remove('versteckt');
   ultimateBereich.classList.add('versteckt');
   ergebnisBereich.classList.add('versteckt');
+  renderScoreLeiste(letzteStaende, index);
 
-  document.getElementById('eigene-karte').innerHTML = kartenHtml(eigeneKarte);
-  document.getElementById('eigene-karte').className = `spielkarte ${eigeneKarte.typSymbol.toLowerCase()}`;
+  const karteEl = document.getElementById('eigene-karte');
+  karteEl.innerHTML = kartenHtml(eigeneKarte);
+  karteEl.className = `spielkarte ${eigeneKarte.typSymbol.toLowerCase()}`;
+  animiereBalken(karteEl);
 
   const buttons = document.getElementById('kategorie-buttons');
   buttons.innerHTML = '';
@@ -122,11 +201,12 @@ socket.on('deinZug', ({ eigeneKarte, kategorien }) => {
   });
 });
 
-socket.on('wartenAufGegner', ({ gegnerName: name }) => {
+socket.on('wartenAufSpieler', ({ name, index }) => {
   statusZeile.textContent = `${name} waehlt gerade die Kategorie...`;
   eigeneKarteBereich.classList.add('versteckt');
   ultimateBereich.classList.add('versteckt');
   ergebnisBereich.classList.add('versteckt');
+  renderScoreLeiste(letzteStaende, index);
 });
 
 // ---------- Ultimate ----------
@@ -155,54 +235,66 @@ socket.on('rundenErgebnis', (ergebnis) => {
   ergebnisBereich.classList.remove('versteckt');
   statusZeile.textContent = '';
 
-  const meineSeite = socket.meineSeite;
-  const meineKarte = meineSeite === 'A' ? ergebnis.karteA : ergebnis.karteB;
-  const gegnerKarte = meineSeite === 'A' ? ergebnis.karteB : ergebnis.karteA;
+  // Clash-Titel neu antriggern (Animation zuruecksetzen)
+  const clash = document.getElementById('clash-titel');
+  clash.style.animation = 'none';
+  // eslint-disable-next-line no-unused-expressions
+  clash.offsetHeight;
+  clash.style.animation = '';
 
-  const karteAEl = document.getElementById('ergebnis-karte-a');
-  const karteBEl = document.getElementById('ergebnis-karte-b');
-  karteAEl.innerHTML = kartenHtml(meineKarte);
-  karteAEl.className = `spielkarte ${meineKarte.typSymbol.toLowerCase()}`;
-  karteBEl.innerHTML = kartenHtml(gegnerKarte);
-  karteBEl.className = `spielkarte ${gegnerKarte.typSymbol.toLowerCase()}`;
+  const raster = document.getElementById('duell-raster');
+  raster.innerHTML = '';
+  ergebnis.ergebnisse.forEach((e) => {
+    const name = spielerListe[e.spielerIndex]?.name || `Spieler ${e.spielerIndex + 1}`;
+    const label = e.spielerIndex === meinIndex ? `${name} (Du)` : name;
+    const div = document.createElement('div');
+    div.className = `spielkarte ${e.karte.typSymbol.toLowerCase()}` + (e.spielerIndex === ergebnis.gewinnerIndex ? ' gewonnen' : '');
+    div.innerHTML = kartenHtml(e.karte, label);
+    raster.appendChild(div);
+    animiereBalken(div);
+  });
 
   document.getElementById('ultimate-meldung').textContent = ergebnis.ultimateMeldung || '';
 
   const ergebnisText = document.getElementById('ergebnis-text');
-  if (ergebnis.gewinnerSeite === null) {
-    ergebnisText.textContent = 'Gleichstand - beide Karten in den Pot!';
+  if (ergebnis.gewinnerIndex === null) {
+    ergebnisText.textContent = 'Gleichstand - alle Karten in den Pot!';
     ergebnisText.className = 'ergebnis-text unentschieden';
-  } else if (ergebnis.gewinnerSeite === meineSeite) {
-    ergebnisText.textContent = `Du gewinnst die Runde!${ergebnis.assembleBonusAktiv ? ' ASSEMBLE! (zaehlt doppelt)' : ''}`;
+  } else if (ergebnis.gewinnerIndex === meinIndex) {
+    ergebnisText.textContent = `Du gewinnst die Runde!${ergebnis.assembleBonusAktiv ? ' ASSEMBLE!' : ''}`;
     ergebnisText.className = 'ergebnis-text sieg';
   } else {
-    ergebnisText.textContent = `${gegnerName} gewinnt die Runde.${ergebnis.assembleBonusAktiv ? ' ASSEMBLE! (zaehlt doppelt)' : ''}`;
+    const siegerName = spielerListe[ergebnis.gewinnerIndex]?.name || '';
+    ergebnisText.textContent = `${siegerName} gewinnt die Runde.${ergebnis.assembleBonusAktiv ? ' ASSEMBLE!' : ''}`;
     ergebnisText.className = 'ergebnis-text niederlage';
   }
 
-  const eigeneKartenAnzahl = meineSeite === 'A' ? ergebnis.staende.A : ergebnis.staende.B;
-  const gegnerKartenAnzahl = meineSeite === 'A' ? ergebnis.staende.B : ergebnis.staende.A;
-  document.getElementById('score-eigen').textContent = `${eigenerName}: ${eigeneKartenAnzahl} Karten`;
-  document.getElementById('score-gegner').textContent = `${gegnerName}: ${gegnerKartenAnzahl} Karten`;
-  document.getElementById('runden-anzeige').textContent = `Runde ${ergebnis.runde} / 15`;
-});
-
-// Die eigene Seite (A/B) merken, sobald sie bekannt ist.
-socket.on('raumErstellt', () => { socket.meineSeite = 'A'; });
-socket.on('spielGestartet', () => {
-  // Server weiss, wer A/B ist; wir leiten es indirekt ab: wer den Raum erstellt hat, ist A.
-  if (!socket.meineSeite) socket.meineSeite = 'B';
+  letzteStaende = ergebnis.staende;
+  renderScoreLeiste(letzteStaende, null);
+  document.getElementById('runden-anzeige').textContent = `RUNDE ${ergebnis.runde} / 15`;
 });
 
 // ---------- Spielende ----------
 
-socket.on('spielVorbei', ({ gewinnerSeite }) => {
-  const text = gewinnerSeite === null
-    ? 'Unentschieden!'
-    : gewinnerSeite === socket.meineSeite
-      ? 'Du gewinnst das Spiel!'
-      : `${gegnerName} gewinnt das Spiel!`;
-  document.getElementById('ende-text').textContent = text;
+socket.on('spielVorbei', ({ gewinnerIndex, rangliste }) => {
+  const titel = document.getElementById('ende-titel');
+  if (gewinnerIndex === null) {
+    titel.textContent = 'UNENTSCHIEDEN!';
+  } else if (gewinnerIndex === meinIndex) {
+    titel.textContent = 'DU GEWINNST! 🏆';
+  } else {
+    titel.textContent = `${spielerListe[gewinnerIndex]?.name || ''} GEWINNT!`;
+  }
+
+  const liste = document.getElementById('ende-rangliste');
+  liste.innerHTML = '';
+  rangliste.forEach((s, i) => {
+    const li = document.createElement('li');
+    if (i === 0) li.classList.add('sieger');
+    li.innerHTML = `<span>${s.name}</span><span>${s.anzahl} Karten</span>`;
+    liste.appendChild(li);
+  });
+
   zeigeBildschirm('ende');
 });
 
@@ -210,7 +302,8 @@ document.getElementById('btn-neustart').addEventListener('click', () => {
   location.reload();
 });
 
-socket.on('gegnerVerbindungGetrennt', () => {
-  document.getElementById('ende-text').textContent = 'Die Verbindung zum Gegner wurde getrennt.';
+socket.on('spielerVerbindungGetrennt', ({ name }) => {
+  document.getElementById('ende-titel').textContent = `Verbindung zu ${name || 'einem Spieler'} verloren`;
+  document.getElementById('ende-rangliste').innerHTML = '';
   zeigeBildschirm('ende');
 });

@@ -147,8 +147,8 @@ class TeamKarte extends Karte {
   }
 
   wendeUltimateAn(kontext) {
-    kontext.gegnerBonus += -2;
-    return `${this.name} setzt das Team-Ultimate ein: Gegner -2`;
+    kontext.andereBonus += -2;
+    return `${this.name} setzt das Team-Ultimate ein: alle anderen -2`;
   }
 }
 
