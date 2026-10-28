@@ -139,14 +139,33 @@ const statusZeile = document.getElementById('status-zeile');
 
 const MAX_WERT = 10;
 
-function kartenHtml(karte, besitzerLabel) {
+// Generische, markenfreie Umriss-Icons. Kategorie-Icons zeigen, worum es in der
+// Runde geht (fuer alle Kartentypen gleich); die Typ-Icons sind der Fallback,
+// solange noch keine Kategorie feststeht (z. B. die eigene Karte vor der Wahl).
+const KATEGORIE_ICONS = {
+  'Intelligenz': '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><path d="M24 6a14 14 0 0 0-8 25.5V36h16v-4.5A14 14 0 0 0 24 6Z"/><path d="M19 42h10M21 36v6M27 36v6"/></svg>',
+  'Stärke': '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="24" r="5"/><circle cx="38" cy="24" r="5"/><path d="M15 24h18" stroke-width="4"/></svg>',
+  'Geschwindigkeit': '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><path d="M26 4 10 28h10l-4 16 20-26H26l4-14Z" stroke-linejoin="round"/></svg>',
+  'Widerstandsfähigkeit': '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><path d="M24 5 8 11v12c0 11 7 17.5 16 20 9-2.5 16-9 16-20V11L24 5Z" stroke-linejoin="round"/></svg>',
+  'Energieprojektion': '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><path d="M24 4v10M24 34v10M4 24h10M34 24h10M10 10l7 7M31 31l7 7M38 10l-7 7M17 31l-7 7"/><circle cx="24" cy="24" r="7"/></svg>',
+  'Kampffähigkeit': '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 14 22 28M8 14l4-4 14 14M8 14l-2 6 6-2" stroke-linejoin="round"/><path d="M40 14 26 28M40 14l-4-4-14 14M40 14l2 6-6-2" stroke-linejoin="round"/></svg>',
+};
+
+const TYP_ICONS = {
+  HELD: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><path d="M24 4 44 14v12c0 12-8.5 19.5-20 22C12.5 45.5 4 38 4 26V14Z" stroke-linejoin="round"/></svg>',
+  SCHURKE: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><path d="M24 4 44 24 24 44 4 24Z" stroke-linejoin="round"/></svg>',
+  TEAM: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="22" r="9"/><circle cx="30" cy="22" r="9"/></svg>',
+};
+
+function kartenHtml(karte, besitzerLabel, kategorie) {
   const typKlasse = karte.typSymbol.toLowerCase();
   const balken = karte.werte
     .map((wert, i) => {
       const kategorieName = KATEGORIEN_ANZEIGE[i] || '';
       const prozent = Math.round((wert / MAX_WERT) * 100);
+      const istAktuelleKategorie = kategorieName === kategorie;
       return `
-        <div class="stat-zeile">
+        <div class="stat-zeile${istAktuelleKategorie ? ' aktive-kategorie' : ''}">
           <span>${kategorieName}</span>
           <div class="stat-balken"><div class="stat-balken-fuellung" data-ziel="${prozent}"></div></div>
           <span>${wert}</span>
@@ -154,12 +173,16 @@ function kartenHtml(karte, besitzerLabel) {
     })
     .join('');
 
+  const platzhalterInhalt = kategorie
+    ? `<div class="kategorie-label">${kategorie}</div><div class="kategorie-icon">${KATEGORIE_ICONS[kategorie] || ''}</div>`
+    : `<div class="kategorie-icon typ-icon">${TYP_ICONS[karte.typSymbol] || ''}</div>`;
+
   return `
     <div class="bild-rahmen">
       <img class="karten-bild" src="images/${karte.bildSchluessel}.jpg"
            onerror="this.onerror=null;this.closest('.spielkarte').classList.add('kein-bild');"
            alt="" />
-      <div class="bild-platzhalter" aria-hidden="true"></div>
+      <div class="bild-platzhalter" aria-hidden="true">${platzhalterInhalt}</div>
       <span class="typ-tag ${typKlasse}">${karte.typSymbol}</span>
       ${besitzerLabel ? `<div class="besitzer">${besitzerLabel}</div>` : ''}
     </div>
@@ -294,7 +317,7 @@ socket.on('rundenErgebnis', (ergebnis) => {
     const label = e.spielerIndex === meinIndex ? `${name} (Du)` : name;
     const div = document.createElement('div');
     div.className = `spielkarte ${e.karte.typSymbol.toLowerCase()}` + (e.spielerIndex === ergebnis.gewinnerIndex ? ' gewonnen' : '');
-    div.innerHTML = kartenHtml(e.karte, label);
+    div.innerHTML = kartenHtml(e.karte, label, ergebnis.kategorie);
     raster.appendChild(div);
     animiereBalken(div);
   });
