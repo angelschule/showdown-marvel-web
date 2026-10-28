@@ -1,0 +1,320 @@
+:root {
+  --bg: #0f1220;
+  --panel: #1b2036;
+  --panel-rand: #2c3356;
+  --text: #f2f2f7;
+  --muted: #9aa0c0;
+  --held: #3b82f6;
+  --schurke: #ef4444;
+  --team: #eab308;
+  --akzent: #ffd43b;
+  --gruen: #22c55e;
+  --rot: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #1a1f3a, var(--bg) 70%);
+  color: var(--text);
+  font-family: "Segoe UI", Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+#app {
+  width: 100%;
+  max-width: 720px;
+}
+
+.kopfzeile {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.kopfzeile h1 {
+  font-size: 2rem;
+  letter-spacing: 0.08em;
+  margin: 0;
+  color: var(--akzent);
+  text-shadow: 0 0 12px rgba(255, 212, 59, 0.4);
+}
+
+.unterzeile {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--muted);
+  letter-spacing: 0.2em;
+}
+
+.bildschirm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.versteckt {
+  display: none !important;
+}
+
+.karte-panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-rand);
+  border-radius: 12px;
+  padding: 20px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.karte-panel h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-rand);
+  background: #11142a;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-top: 14px;
+  width: 100%;
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+.primaer {
+  background: var(--akzent);
+  color: #1a1f3a;
+}
+
+.sekundaer {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--panel-rand);
+}
+
+.fehler {
+  color: var(--rot);
+  font-size: 0.9rem;
+  min-height: 1.2em;
+}
+
+.raum-code {
+  font-size: 3rem;
+  letter-spacing: 0.3em;
+  font-weight: 700;
+  background: var(--panel);
+  border: 2px dashed var(--akzent);
+  padding: 16px 28px;
+  border-radius: 12px;
+  color: var(--akzent);
+}
+
+.hinweis {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.score-leiste {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 0.9rem;
+  color: var(--muted);
+  padding: 0 4px;
+}
+
+.status-zeile {
+  text-align: center;
+  min-height: 1.4em;
+  font-size: 1rem;
+}
+
+.karten-bereich {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.spielkarte {
+  background: var(--panel);
+  border: 2px solid var(--panel-rand);
+  border-radius: 14px;
+  padding: 16px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.spielkarte.held { border-color: var(--held); }
+.spielkarte.schurke { border-color: var(--schurke); }
+.spielkarte.team { border-color: var(--team); }
+
+.spielkarte .titel {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+
+.spielkarte .name {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.spielkarte .typ-tag {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.typ-tag.held { background: var(--held); color: #fff; }
+.typ-tag.schurke { background: var(--schurke); color: #fff; }
+.typ-tag.team { background: var(--team); color: #1a1f3a; }
+
+.spielkarte .platzhalter-bild {
+  width: 100%;
+  height: 64px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  margin-bottom: 10px;
+  background: repeating-linear-gradient(45deg, #11142a, #11142a 10px, #171b35 10px, #171b35 20px);
+  color: var(--muted);
+}
+
+.stat-zeile {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.78rem;
+  margin-bottom: 4px;
+}
+
+.stat-balken {
+  background: #11142a;
+  border-radius: 4px;
+  overflow: hidden;
+  height: 10px;
+}
+
+.stat-balken-fuellung {
+  height: 100%;
+  background: var(--akzent);
+}
+
+.kategorie-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.kategorie-buttons button {
+  margin-top: 0;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--panel-rand);
+}
+
+.kategorie-buttons button:hover {
+  background: var(--akzent);
+  color: #1a1f3a;
+}
+
+.ultimate-bereich {
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid var(--akzent);
+  border-radius: 12px;
+  padding: 16px;
+  width: 100%;
+}
+
+.ultimate-bereich button {
+  width: 48%;
+  display: inline-block;
+}
+
+.ergebnis-bereich {
+  width: 100%;
+  text-align: center;
+}
+
+.duell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.duell .spielkarte {
+  max-width: 260px;
+  animation: pop-in 0.25s ease-out;
+}
+
+@keyframes pop-in {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.vs {
+  font-weight: 800;
+  color: var(--akzent);
+  font-size: 1.3rem;
+}
+
+.ultimate-meldung {
+  color: var(--akzent);
+  font-weight: 600;
+}
+
+.ergebnis-text {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.ergebnis-text.sieg { color: var(--gruen); }
+.ergebnis-text.niederlage { color: var(--rot); }
+.ergebnis-text.unentschieden { color: var(--muted); }

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SHOWDOWN - Marvel Quartett</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="kopfzeile">
+      <h1>SHOWDOWN <span class="unterzeile">Marvel Quartett</span></h1>
+    </header>
+
+    <!-- Startbildschirm: Raum erstellen oder beitreten -->
+    <section id="start-bildschirm" class="bildschirm">
+      <div class="karte-panel">
+        <h2>Neues Spiel</h2>
+        <label>Dein Name</label>
+        <input id="name-erstellen" type="text" placeholder="z. B. Angel" maxlength="20" />
+        <button id="btn-raum-erstellen" class="primaer">Raum erstellen</button>
+      </div>
+      <div class="karte-panel">
+        <h2>Beitreten</h2>
+        <label>Dein Name</label>
+        <input id="name-beitreten" type="text" placeholder="z. B. Alex" maxlength="20" />
+        <label>Raum-Code</label>
+        <input id="code-beitreten" type="text" placeholder="z. B. KPXR" maxlength="4" style="text-transform:uppercase" />
+        <button id="btn-raum-beitreten" class="sekundaer">Beitreten</button>
+      </div>
+      <p id="start-fehler" class="fehler"></p>
+    </section>
+
+    <!-- Warteraum -->
+    <section id="warte-bildschirm" class="bildschirm versteckt">
+      <h2>Warte auf Gegner...</h2>
+      <p>Gib deinem Freund / deiner Freundin diesen Code:</p>
+      <div id="raum-code-anzeige" class="raum-code"></div>
+      <p class="hinweis">Sobald jemand beitritt, startet das Spiel automatisch.</p>
+    </section>
+
+    <!-- Spielbildschirm -->
+    <section id="spiel-bildschirm" class="bildschirm versteckt">
+      <div class="score-leiste">
+        <span id="score-eigen">Du: 0 Karten</span>
+        <span id="runden-anzeige">Runde 0 / 15</span>
+        <span id="score-gegner">Gegner: 0 Karten</span>
+      </div>
+
+      <div id="status-zeile" class="status-zeile"></div>
+
+      <div id="eigene-karte-bereich" class="karten-bereich versteckt">
+        <h3>Deine oberste Karte</h3>
+        <div id="eigene-karte" class="spielkarte"></div>
+        <div id="kategorie-buttons" class="kategorie-buttons"></div>
+      </div>
+
+      <div id="ultimate-bereich" class="ultimate-bereich versteckt">
+        <p>Willst du dein Ultimate einsetzen? (nur 1x pro Spiel)</p>
+        <button id="btn-ultimate-ja" class="primaer">Ja, einsetzen</button>
+        <button id="btn-ultimate-nein" class="sekundaer">Nein</button>
+      </div>
+
+      <div id="ergebnis-bereich" class="ergebnis-bereich versteckt">
+        <div class="duell">
+          <div id="ergebnis-karte-a" class="spielkarte"></div>
+          <div class="vs">VS</div>
+          <div id="ergebnis-karte-b" class="spielkarte"></div>
+        </div>
+        <p id="ultimate-meldung" class="ultimate-meldung"></p>
+        <p id="ergebnis-text" class="ergebnis-text"></p>
+      </div>
+    </section>
+
+    <!-- Spielende -->
+    <section id="ende-bildschirm" class="bildschirm versteckt">
+      <h2 id="ende-text"></h2>
+      <button id="btn-neustart" class="primaer">Neues Spiel</button>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
