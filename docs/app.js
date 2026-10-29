@@ -293,6 +293,12 @@ const ultimateBereich = document.getElementById('ultimate-bereich');
 const ergebnisBereich = document.getElementById('ergebnis-bereich');
 const statusZeile = document.getElementById('status-zeile');
 
+// Der Zurueck-Pfeil steht fest in index.html (schwebt neben der Karte, nicht
+// Teil ihres Markups) - deshalb nur einmal verdrahten, nicht bei jeder Runde.
+document.getElementById('btn-karte-zurueck').addEventListener('click', () => {
+  socket.emit('eigeneKarteZurueck');
+});
+
 // Probiert nacheinander mehrere Dateiendungen fuer das Kartenbild durch, bevor
 // auf den generischen Platzhalter zurueckgefallen wird. So reicht es, eine
 // Bilddatei exakt "<bildSchluessel>.<eine dieser Endungen>" abzulegen - egal
@@ -382,14 +388,12 @@ function kartenHtml(karte, besitzerLabel, kategorie) {
 
 // Interaktive Anzeige (eigene Kategoriewahl): Bild bleibt sichtbar, das
 // Attribut-Raster darunter ist direkt anklickbar - kein Overlay auf dem Bild.
-// Oben rechts ein kleiner Zurueck-Pfeil, falls aus Versehen die falsche Karte
-// gewaehlt wurde (legt sie zurueck in die Hand).
+// Der Zurueck-Pfeil (falls aus Versehen die falsche Karte gewaehlt wurde)
+// ist ein eigenes, schwebendes Element NEBEN der Karte (siehe index.html
+// .eigene-karte-zeile), nicht Teil dieses Karten-Markups.
 function kartenHtmlIconReihe(karte) {
   return `
     ${bildRahmenHtml(karte, null)}
-    <button type="button" id="btn-karte-zurueck" class="btn-karte-zurueck" aria-label="Andere Karte waehlen" title="Andere Karte waehlen">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
-    </button>
     <div class="karte-info">
       <div class="name">${karte.name}</div>
       ${attributRasterHtml(karte, { interaktiv: true })}
@@ -470,10 +474,6 @@ socket.on('waehleKategorieFuerKarte', ({ karte, kategorien }) => {
   karteEl.innerHTML = kartenHtmlIconReihe(karte);
   karteEl.className = `spielkarte kompakt ${karte.typSymbol.toLowerCase()}`;
   aktiviereAttributKlicks(karteEl);
-  document.getElementById('btn-karte-zurueck').addEventListener('click', (e) => {
-    e.stopPropagation();
-    socket.emit('eigeneKarteZurueck');
-  });
 });
 
 socket.on('wartenAufSpieler', ({ name, index }) => {

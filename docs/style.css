@@ -89,7 +89,10 @@ body.im-spiel #spiel-bildschirm {
   flex: none;
   transform: translate(-50%, -50%) scale(var(--tisch-skala));
   transform-origin: center center;
-  overflow: hidden auto;
+  /* Bewusst NUR hidden, kein auto-Scroll - der Tisch soll sich nie bewegen
+     lassen (auch nicht per Scrollrad/Touch). Falls in einem Rand-/Sonderfall
+     mal etwas zu viel Inhalt da waere, wird er abgeschnitten statt scrollbar. */
+  overflow: hidden;
   padding: 14px 24px 16px;
   gap: 8px;
 }
@@ -259,16 +262,21 @@ body.im-spiel #spiel-bildschirm::-webkit-scrollbar,
   align-items: stretch;
 }
 
-/* ---------- Ladebildschirm: Video als Vollbild-Hintergrund ---------- */
+/* ---------- Hintergrund-Video: hinter Lade- UND Startbildschirm ----------
+   Ein einziges, immer vorhandenes Vollbild-Video im Hintergrund (z-index 0,
+   hinter #app) - sichtbar waehrend Verbinden und auf dem Startmenue, waehrend
+   des Spiels ausgeblendet (der Tisch hat sein eigenes Pokertisch-Design). */
 
-#lade-bildschirm {
+.hintergrund-video {
   position: fixed;
   inset: 0;
-  z-index: 70;
-  padding: 0;
-  margin: 0;
-  background: #000;
+  z-index: 0;
   overflow: hidden;
+  background: #000;
+}
+
+body.im-spiel .hintergrund-video {
+  display: none;
 }
 
 .lade-artwork-video {
@@ -277,7 +285,7 @@ body.im-spiel #spiel-bildschirm::-webkit-scrollbar,
   width: 100%;
   height: 100%;
   object-fit: cover;
-  z-index: 0;
+  z-index: 1;
 }
 
 /* Schimmer deutet an, dass hier spaeter ein echtes Artwork hinkommt - laeuft
@@ -314,31 +322,22 @@ body.im-spiel #spiel-bildschirm::-webkit-scrollbar,
   opacity: 0.4;
 }
 
-/* Dunkler werdender Verlauf von unten, damit Titel/Text auf dem Video immer
+/* Dunkler werdender Verlauf von unten, damit Titel/Text/Panels darueber immer
    lesbar bleiben, egal wie hell die jeweilige Videostelle gerade ist. */
 .lade-scrim {
   position: absolute;
   inset: 0;
-  z-index: 1;
-  background:
-    linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 30%, rgba(0,0,0,0.35) 65%, rgba(0,0,0,0.85) 100%);
-}
-
-.lade-inhalt {
-  position: relative;
   z-index: 2;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 24px 16px 56px;
-  text-align: center;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 25%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0.75) 100%);
 }
 
-.lade-inhalt .titel-hero { margin: 0; }
+/* ---------- Ladebildschirm: nur noch der Text, das Video ist der
+   gemeinsame .hintergrund-video-Hintergrund darunter ---------- */
+
+#lade-bildschirm {
+  padding: 60px 16px 10px;
+}
 
 .lade-text {
   font-family: var(--font-display);
@@ -1119,23 +1118,28 @@ input[type="text"]:focus {
   z-index: 1;
 }
 
-/* Kleiner Zurueck-Pfeil am Rand der Kategorie-Karte - falls aus Versehen die
-   falsche Karte gewaehlt wurde, legt er sie zurueck in die Hand. Sitzt am
-   Eck der Karte, halb ueberlappend, damit er sich klar vom Typ-Tag abhebt. */
+/* Zeile aus schwebendem Zurueck-Knopf + Kategorie-Karte nebeneinander - der
+   Knopf ist bewusst NEBEN der Karte (eigenes Element), nicht auf ihr. */
+.eigene-karte-zeile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Kleiner, frei schwebender Zurueck-Pfeil neben der Kategorie-Karte - falls
+   aus Versehen die falsche Karte gewaehlt wurde, legt er sie zurueck in die
+   Hand. Kein Teil der Karte selbst, sondern ein eigenes rundes Element. */
 .btn-karte-zurueck {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  z-index: 2;
-  width: 24px;
-  height: 24px;
-  padding: 5px;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  padding: 8px;
   border-radius: 50%;
   background: linear-gradient(165deg, var(--panel), #08070a);
   border: 1px solid rgba(201, 163, 95, 0.5);
   color: var(--gold-hell);
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1598,6 +1602,10 @@ input[type="text"]:focus {
 .menu-fenster {
   width: 300px;
   height: 380px;
+  /* Genereller Schutz gegen Ueberlaufen bei knapper Fensterhoehe, egal welche
+     Breakpoint-Regel sonst noch greift - immer etwas Abstand zum Rand. */
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
   display: flex;
   flex-direction: column;
   background: linear-gradient(165deg, var(--panel), #08070a);
@@ -1785,7 +1793,18 @@ input[type="text"]:focus {
      body.im-spiel #spiel-bildschirm). Menue/Chat sind davon unabhaengig, weil
      sie fix am Fensterrand haengen statt Teil des Tisches zu sein. */
   .menu-widget { top: 8px; right: 8px; }
-  .menu-fenster { width: calc(100vw - 16px); max-width: 320px; height: 70vh; }
+  .menu-fenster {
+    width: calc(100vw - 16px);
+    max-width: 320px;
+    /* vh als Fallback fuer aeltere Browser, dvh (dynamische Viewporthoehe)
+       berechnet korrekt auch wenn die Adressleiste des Handys noch sichtbar
+       ist - sonst ragte das Fenster teilweise ueber den sichtbaren Bereich
+       hinaus. max-height sorgt zusaetzlich fuer etwas Abstand zum Rand. */
+    height: 70vh;
+    height: 70dvh;
+    max-height: calc(100vh - 90px);
+    max-height: calc(100dvh - 90px);
+  }
 }
 
 @media (hover: none) {
@@ -1860,7 +1879,8 @@ input[type="text"]:focus {
   .spielkarte.kompakt .attribut-icon { width: 8px; height: 8px; }
   .spielkarte.kompakt .attribut-wert { font-size: 0.54rem; }
   .spielkarte.kompakt .gesamtstaerke-zeile { font-size: 0.46rem; margin-top: 1px; padding-top: 1px; }
-  .btn-karte-zurueck { width: 18px; height: 18px; padding: 4px; top: -5px; right: -5px; }
+  .eigene-karte-zeile { gap: 8px; }
+  .btn-karte-zurueck { width: 24px; height: 24px; padding: 5px; }
 
   .duell-raster { gap: 6px; }
   .duell-raster .spielkarte { max-width: 130px; }
@@ -1873,5 +1893,10 @@ input[type="text"]:focus {
   .menu-widget { top: 4px; right: 4px; }
   .menu-toggle { height: 26px; padding: 0 8px; gap: 4px; }
   .menu-toggle-label { font-size: 0.6rem; }
-  .menu-fenster { width: 240px; height: 240px; }
+  .menu-fenster {
+    width: 240px;
+    height: 240px;
+    max-height: calc(100vh - 50px);
+    max-height: calc(100dvh - 50px);
+  }
 }
