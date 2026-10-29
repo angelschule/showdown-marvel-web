@@ -421,13 +421,14 @@ input[type="text"]:focus {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
 .gegner-hand-label {
-  font-size: 0.7rem;
-  color: var(--muted);
-  letter-spacing: 0.04em;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  color: var(--text);
 }
 
 .gegner-hand-reihe {
@@ -435,18 +436,134 @@ input[type="text"]:focus {
 }
 
 .karten-rueckseite {
-  width: 20px;
-  height: 28px;
-  border-radius: 3px;
+  width: 38px;
+  height: 54px;
+  border-radius: 5px;
   background:
-    repeating-linear-gradient(135deg, #1a1830, #1a1830 3px, #241f40 3px, #241f40 6px);
+    repeating-linear-gradient(135deg, #1a1830, #1a1830 4px, #241f40 4px, #241f40 8px);
   border: 1px solid var(--gold);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-  margin-left: -10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  margin-left: -18px;
+  transform: perspective(900px) rotateX(2deg);
+  transition: transform 0.2s ease;
 }
 
 .gegner-hand-reihe .karten-rueckseite:first-child {
   margin-left: 0;
+}
+
+.gegner-stapel-reihe {
+  display: flex;
+  gap: 14px;
+}
+
+/* ---------- Nachzieh-/Gewinn-Stapel ("Pocket") - eigener und Gegner ---------- */
+
+.stapel-gruppe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stapel-grafik {
+  position: relative;
+  width: 44px;
+  height: 60px;
+  border-radius: 5px;
+  background: linear-gradient(165deg, var(--panel), #0c0b11);
+  border: 2px solid var(--panel-rand);
+  box-shadow:
+    0 0 0 1px var(--bg),
+    3px 3px 0 0 var(--panel-rand),
+    0 10px 16px rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stapel-grafik.stapel-gewonnen {
+  border-color: var(--gold);
+  box-shadow:
+    0 0 0 1px var(--bg),
+    3px 3px 0 0 rgba(212, 175, 100, 0.4),
+    0 0 14px rgba(212, 175, 100, 0.3);
+}
+
+.stapel-grafik.stapel-leer {
+  opacity: 0.4;
+  box-shadow: none;
+}
+
+.stapel-anzahl {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--gold-hell);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+
+.stapel-titel {
+  font-size: 0.56rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ---------- Persistenter Pot in der Tischmitte ---------- */
+
+.pot-anzeige-tisch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------- Tischmitte: verdeckte Karten "live", waehrend die Runde laeuft ---------- */
+
+.mitte-spielflaeche {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  min-height: 0;
+}
+
+.tisch-karte-verdeckt {
+  width: 46px;
+  height: 64px;
+  border-radius: 5px;
+  background: repeating-linear-gradient(135deg, #1a1830, #1a1830 4px, #241f40 4px, #241f40 8px);
+  border: 1px solid var(--gold);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 3px;
+  animation: tisch-karte-rein 0.35s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@keyframes tisch-karte-rein {
+  from { transform: translateY(-24px) scale(0.85); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.tisch-karte-verdeckt-label {
+  font-size: 0.5rem;
+  letter-spacing: 0.04em;
+  color: var(--gold-hell);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+}
+
+/* ---------- Eigener Platz: Nachzieh-/Gewinn-Stapel unter der eigenen Hand ---------- */
+
+.eigener-tisch {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  margin-top: 4px;
 }
 
 .runden-anzeige {
@@ -731,29 +848,28 @@ input[type="text"]:focus {
   width: 100%;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 24px 10px 10px;
+  padding: 50px 10px 16px;
 }
 
 .hand-fan {
   display: flex;
+  align-items: flex-end;
   justify-content: center;
   width: max-content;
   margin: 0 auto;
 }
 
+/* Hand-Karten sind volle Karten (Bild + Attribut-Raster, ueber .spielkarte) -
+   nur etwas kleiner und ueberlappend im Faecher, damit sie groesser wirken
+   als die Kartenrueckseiten der Gegner und beim Hover/Klick foermlich
+   "groesser werden". */
 .hand-karte {
-  position: relative;
-  background: linear-gradient(165deg, var(--panel), #0c0b11);
-  border: 1px solid var(--panel-rand);
-  border-radius: 8px;
-  padding: 10px 8px;
-  text-align: center;
+  flex: 0 0 150px;
+  max-width: 150px;
+  margin-left: -48px;
   cursor: pointer;
-  flex: 0 0 110px;
-  margin-left: -38px;
-  transform: perspective(900px) rotateX(3deg);
-  box-shadow: 0 16px 28px -8px rgba(0, 0, 0, 0.65);
-  transition: transform 0.18s ease, border-color 0.15s ease, box-shadow 0.15s ease, z-index 0s;
+  z-index: 1;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, z-index 0s;
 }
 
 .hand-fan .hand-karte:first-child {
@@ -761,47 +877,22 @@ input[type="text"]:focus {
 }
 
 .hand-karte:hover {
-  transform: translateY(-16px) scale(1.06);
-  border-color: var(--gold);
-  box-shadow: 0 12px 24px rgba(0,0,0,0.5);
+  transform: perspective(900px) rotateX(1deg) translateY(-22px) scale(1.14);
   z-index: 5;
+  box-shadow: 0 26px 44px -8px rgba(0, 0, 0, 0.75), 0 0 22px rgba(212, 175, 100, 0.3);
 }
 
-.hand-karte.held { border-left: 3px solid var(--held); }
-.hand-karte.schurke { border-left: 3px solid var(--schurke); }
-.hand-karte.team { border-left: 3px solid var(--team); }
-
-.hand-karte .typ-tag {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  font-size: 0.55rem;
-  padding: 2px 6px;
-}
-
-.hand-karte-name {
-  font-family: var(--font-display);
-  font-size: 0.85rem;
-  letter-spacing: 0.02em;
-  margin: 10px 0 4px;
-  line-height: 1.1;
-  min-height: 2.2em;
-}
-
-.hand-karte-wert {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  color: var(--gold-hell);
-  line-height: 1;
-}
-
-.hand-karte-label {
-  font-size: 0.6rem;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-top: 2px;
-}
+.hand-karte .bild-rahmen { height: 100px; }
+.hand-karte .karte-info { padding: 6px 8px 8px; }
+.hand-karte .name { font-size: 0.78rem; margin-bottom: 3px; }
+.hand-karte .attribut-raster { gap: 3px; margin: 3px 0; }
+.hand-karte .attribut-zelle { padding: 2px 1px; gap: 0; }
+.hand-karte .attribut-label { font-size: 0.42rem; }
+.hand-karte .attribut-icon { width: 13px; height: 13px; }
+.hand-karte .attribut-wert { font-size: 0.68rem; }
+.hand-karte .gesamtstaerke-zeile { font-size: 0.65rem; margin-top: 4px; padding-top: 3px; }
+.hand-karte .typ-tag { font-size: 0.5rem; padding: 2px 6px; }
+.hand-karte .besitzer { display: none; }
 
 /* ---------- Ultimate ---------- */
 
@@ -988,15 +1079,14 @@ input[type="text"]:focus {
   .panel { max-width: 100%; }
   .duell-raster .spielkarte { max-width: 100%; }
   .duell-zeile { flex-direction: column; }
-  .hand-karte { flex-basis: 92px; margin-left: -30px; }
-  .icon-stat-icon { width: 18px; height: 18px; }
+  .hand-karte { flex-basis: 108px; max-width: 108px; margin-left: -36px; }
+  .karten-rueckseite { width: 28px; height: 40px; margin-left: -14px; }
 }
 
 @media (hover: none) {
   /* Touchgeraete haben kein Hover - Tippen soll die Karte trotzdem kurz anheben koennen */
   .hand-karte:active {
-    transform: translateY(-16px) scale(1.06);
-    border-color: var(--gold);
+    transform: perspective(900px) rotateX(1deg) translateY(-18px) scale(1.1);
     z-index: 5;
   }
 }

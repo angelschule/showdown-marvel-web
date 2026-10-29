@@ -33,6 +33,10 @@ let meinIndex = null;
 let spielerListe = [];
 let KATEGORIEN_ANZEIGE = [];
 let letzteStaende = [];
+// Optimistische, sofortige Korrektur der angezeigten Handgroesse eines Gegners,
+// bevor der naechste volle Stand (rundenErgebnis) eintrifft - fuer das Live-Gefuehl.
+let liveHandAbzug = {};
+let aktuellerPot = 0;
 
 // ---------- Startbildschirm ----------
 
@@ -113,8 +117,14 @@ socket.on('spielGestartet', (daten) => {
   meinIndex = daten.meinIndex;
   spielerListe = daten.spieler;
   letzteStaende = daten.staende;
+  if (daten.kategorien) KATEGORIEN_ANZEIGE = daten.kategorien;
+  liveHandAbzug = {};
+  aktuellerPot = 0;
   renderScoreLeiste(letzteStaende, null);
-  renderGegnerHaende(letzteStaende);
+  renderGegnerTisch(letzteStaende);
+  renderEigenerTisch(letzteStaende[meinIndex]);
+  renderPot(0);
+  document.getElementById('mitte-spielflaeche').innerHTML = '';
   document.getElementById('runden-anzeige').textContent = 'RUNDE 0 / 15';
   zeigeBildschirm('spiel');
 });
@@ -131,29 +141,60 @@ function renderScoreLeiste(staendeArray, aktiverIndex) {
   });
 }
 
-// Zeigt die Haende der anderen Spieler als verdeckte Kartenrueckseiten -
-// man sieht, wie viele Karten sie haben, aber nicht welche.
-function renderGegnerHaende(staendeArray) {
+function stapelGrafikHtml(anzahl, { gewonnen = false, titel } = {}) {
+  return `
+    <div class="stapel-gruppe">
+      <div class="stapel-grafik${gewonnen ? ' stapel-gewonnen' : ''}${anzahl === 0 ? ' stapel-leer' : ''}">
+        <span class="stapel-anzahl">${anzahl}</span>
+      </div>
+      <div class="stapel-titel">${titel}</div>
+    </div>`;
+}
+
+// Platz am Tisch fuer die anderen Spieler: Name, verdeckte Kartenrueckseiten
+// (man sieht wie viele Karten sie auf der Hand haben, nicht welche) sowie ihr
+// eigener Nachzieh- und Gewinn-Stapel, damit es wie ein echter Platz am
+// Pokertisch wirkt statt wie eine blosse Zahl.
+function renderGegnerTisch(staendeArray) {
   const container = document.getElementById('gegner-haende');
   container.innerHTML = '';
   staendeArray.forEach((s, i) => {
     if (i === meinIndex) return;
+    const sichtbareHandAnzahl = Math.max(0, s.handAnzahl - (liveHandAbzug[i] || 0));
     const gruppe = document.createElement('div');
     gruppe.className = 'gegner-hand-gruppe';
-    const label = document.createElement('div');
-    label.className = 'gegner-hand-label';
-    label.textContent = s.name;
-    const reihe = document.createElement('div');
-    reihe.className = 'gegner-hand-reihe';
-    for (let k = 0; k < s.handAnzahl; k += 1) {
-      const rueckseite = document.createElement('div');
-      rueckseite.className = 'karten-rueckseite';
-      reihe.appendChild(rueckseite);
+    let rueckseiten = '';
+    for (let k = 0; k < sichtbareHandAnzahl; k += 1) {
+      rueckseiten += '<div class="karten-rueckseite"></div>';
     }
-    gruppe.appendChild(label);
-    gruppe.appendChild(reihe);
+    gruppe.innerHTML = `
+      <div class="gegner-hand-label">${s.name}</div>
+      <div class="gegner-hand-reihe">${rueckseiten}</div>
+      <div class="gegner-stapel-reihe">
+        ${stapelGrafikHtml(s.nachziehAnzahl, { titel: 'Nachziehstapel' })}
+        ${stapelGrafikHtml(s.gewonnenAnzahl, { gewonnen: true, titel: 'Gewonnen' })}
+      </div>`;
     container.appendChild(gruppe);
   });
+}
+
+// Eigener Nachzieh- und Gewinn-Stapel ("Pocket") - immer sichtbar am eigenen
+// Platz, analog zu den Stapeln der Gegner.
+function renderEigenerTisch(stand) {
+  const el = document.getElementById('eigener-tisch');
+  if (!stand) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    ${stapelGrafikHtml(stand.nachziehAnzahl, { titel: 'Nachziehstapel' })}
+    ${stapelGrafikHtml(stand.gewonnenAnzahl, { gewonnen: true, titel: 'Gewonnen' })}`;
+}
+
+// Gemeinsamer Pot in der Tischmitte - bleibt sichtbar, solange Karten darin
+// liegen (nicht nur waehrend des Rundenergebnis-Bildschirms).
+function renderPot(groesse) {
+  aktuellerPot = groesse;
+  const anzeige = document.getElementById('pot-anzeige-tisch');
+  document.getElementById('pot-anzahl-tisch').textContent = groesse;
+  anzeige.classList.toggle('versteckt', groesse <= 0);
 }
 
 // ---------- Kategorie waehlen ----------
@@ -162,8 +203,6 @@ const eigeneKarteBereich = document.getElementById('eigene-karte-bereich');
 const ultimateBereich = document.getElementById('ultimate-bereich');
 const ergebnisBereich = document.getElementById('ergebnis-bereich');
 const statusZeile = document.getElementById('status-zeile');
-
-const MAX_WERT = 10;
 
 // Probiert nacheinander mehrere Dateiendungen fuer das Kartenbild durch, bevor
 // auf den generischen Platzhalter zurueckgefallen wird. So reicht es, eine
@@ -277,17 +316,24 @@ function aktiviereAttributKlicks(karteEl) {
 
 const eigeneHandBereich = document.getElementById('eigene-hand-bereich');
 
+function neueRundeTischLeeren() {
+  liveHandAbzug = {};
+  document.getElementById('mitte-spielflaeche').innerHTML = '';
+}
+
 socket.on('waehleEigeneKarte', ({ hand }) => {
   statusZeile.textContent = 'Du bist am Zug - waehle eine Karte aus deiner Hand';
+  neueRundeTischLeeren();
   eigeneHandBereich.classList.remove('versteckt');
   eigeneKarteBereich.classList.add('versteckt');
   antwortkarteBereich.classList.add('versteckt');
   ultimateBereich.classList.add('versteckt');
   ergebnisBereich.classList.add('versteckt');
   renderScoreLeiste(letzteStaende, meinIndex);
+  renderGegnerTisch(letzteStaende);
 
   const raster = document.getElementById('eigene-hand-raster');
-  raster.innerHTML = hand.map((karte) => handKarteHtml(karte, null, [])).join('');
+  raster.innerHTML = hand.map((karte) => handKarteHtml(karte, null)).join('');
   raster.querySelectorAll('.hand-karte').forEach((el) => {
     el.addEventListener('click', () => {
       socket.emit('eigeneKarteWaehlen', { kartenName: el.dataset.name });
@@ -314,38 +360,47 @@ socket.on('waehleKategorieFuerKarte', ({ karte, kategorien }) => {
 
 socket.on('wartenAufSpieler', ({ name, index }) => {
   statusZeile.textContent = `${name} waehlt gerade die Kategorie...`;
+  neueRundeTischLeeren();
   eigeneHandBereich.classList.add('versteckt');
   eigeneKarteBereich.classList.add('versteckt');
   antwortkarteBereich.classList.add('versteckt');
   ultimateBereich.classList.add('versteckt');
   ergebnisBereich.classList.add('versteckt');
   renderScoreLeiste(letzteStaende, index);
+  renderGegnerTisch(letzteStaende);
+});
+
+// Live-Gefuehl: sobald irgendein Spieler (aktiv oder Antwort) eine Karte aus
+// der Hand legt, sieht jeder sofort eine verdeckte Karte in der Tischmitte
+// landen und die Handrueckseiten-Reihe des Spielers wird kleiner - lange bevor
+// das eigentliche Rundenergebnis (mit den aufgedeckten Karten) eintrifft.
+socket.on('kartePlatziert', ({ spielerIndex }) => {
+  if (spielerIndex === meinIndex) return;
+  liveHandAbzug[spielerIndex] = (liveHandAbzug[spielerIndex] || 0) + 1;
+  renderGegnerTisch(letzteStaende);
+
+  const name = spielerListe[spielerIndex]?.name || `Spieler ${spielerIndex + 1}`;
+  const mitte = document.getElementById('mitte-spielflaeche');
+  const karte = document.createElement('div');
+  karte.className = 'tisch-karte-verdeckt';
+  karte.innerHTML = `<span class="tisch-karte-verdeckt-label">${name}</span>`;
+  mitte.appendChild(karte);
 });
 
 // ---------- Antwortkarte frei waehlen ----------
 
 const antwortkarteBereich = document.getElementById('antwortkarte-bereich');
 
-// kategorie=null -> Modus "eigene Karte waehlen": zeigt die Gesamtstaerke,
-// da noch keine Kategorie feststeht. Sonst zeigt es den Wert dieser Kategorie.
-function handKarteHtml(karte, kategorie, kategorien) {
+// Zeigt die volle Karte (Bild + Attribut-Raster) in der Hand-Faecher-Groesse -
+// kategorie=null -> Modus "eigene Karte waehlen" (noch nichts hervorgehoben),
+// sonst wird die Zeile der aktuellen Kategorie markiert. Antippen waehlt die
+// Karte aus; danach wird sie (im naechsten Schritt) gross angezeigt, wo dann
+// die Attribute selbst anklickbar sind.
+function handKarteHtml(karte, kategorie) {
   const typKlasse = karte.typSymbol.toLowerCase();
-  let hauptwert;
-  let hauptlabel;
-  if (kategorie) {
-    const index = kategorien.indexOf(kategorie);
-    hauptwert = index >= 0 ? karte.werte[index] : '?';
-    hauptlabel = kategorie;
-  } else {
-    hauptwert = karte.gesamtstaerke;
-    hauptlabel = 'GESAMT';
-  }
   return `
-    <div class="hand-karte ${typKlasse}" data-name="${karte.name}">
-      <span class="typ-tag ${typKlasse}">${karte.typSymbol}</span>
-      <div class="hand-karte-name">${karte.name}</div>
-      <div class="hand-karte-wert">${hauptwert}</div>
-      <div class="hand-karte-label">${hauptlabel}</div>
+    <div class="hand-karte spielkarte ${typKlasse}" data-name="${karte.name}">
+      ${kartenHtml(karte, null, kategorie)}
     </div>`;
 }
 
@@ -357,10 +412,11 @@ socket.on('waehleAntwortkarte', ({ kategorie, kategorien, hand }) => {
   ultimateBereich.classList.add('versteckt');
   ergebnisBereich.classList.add('versteckt');
   antwortkarteBereich.classList.remove('versteckt');
+  renderGegnerTisch(letzteStaende);
 
   document.getElementById('antwortkarte-hinweis').textContent = `Kategorie: ${kategorie}`;
   const raster = document.getElementById('hand-raster');
-  raster.innerHTML = hand.map((karte) => handKarteHtml(karte, kategorie, kategorien)).join('');
+  raster.innerHTML = hand.map((karte) => handKarteHtml(karte, kategorie)).join('');
   raster.querySelectorAll('.hand-karte').forEach((el) => {
     el.addEventListener('click', () => {
       socket.emit('antwortKarteWaehlen', { kartenName: el.dataset.name });
@@ -416,13 +472,7 @@ socket.on('rundenErgebnis', (ergebnis) => {
     raster.appendChild(div);
   });
 
-  const potAnzeige = document.getElementById('pot-anzeige');
-  if (ergebnis.potGroesse > 0) {
-    document.getElementById('pot-anzahl').textContent = ergebnis.potGroesse;
-    potAnzeige.classList.remove('versteckt');
-  } else {
-    potAnzeige.classList.add('versteckt');
-  }
+  renderPot(ergebnis.potGroesse);
 
   document.getElementById('ultimate-meldung').textContent = ergebnis.ultimateMeldung || '';
 
@@ -440,8 +490,11 @@ socket.on('rundenErgebnis', (ergebnis) => {
   }
 
   letzteStaende = ergebnis.staende;
+  liveHandAbzug = {};
+  document.getElementById('mitte-spielflaeche').innerHTML = '';
   renderScoreLeiste(letzteStaende, null);
-  renderGegnerHaende(letzteStaende);
+  renderGegnerTisch(letzteStaende);
+  renderEigenerTisch(letzteStaende[meinIndex]);
   document.getElementById('runden-anzeige').textContent = `RUNDE ${ergebnis.runde} / 15`;
 });
 

@@ -122,6 +122,7 @@ function staende(raum) {
     name: s.zustand.name,
     anzahl: s.zustand.gesamtAnzahlKarten(),
     handAnzahl: s.zustand.anzahlHand(),
+    nachziehAnzahl: s.zustand.anzahlNachziehstapel(),
     gewonnenAnzahl: s.zustand.anzahlGewonnen(),
   }));
 }
@@ -177,6 +178,7 @@ function waehleEigeneKarte(raum, kartenName) {
     karte: kartenDaten(karte),
     kategorien: KATEGORIEN,
   });
+  sendeAnAlle(raum, 'kartePlatziert', { spielerIndex: raum.aktiverIndex });
 }
 
 // ---------- Schritt 2: aktiver Spieler waehlt die Kategorie fuer diese Karte ----------
@@ -220,6 +222,7 @@ function waehleAntwortkarte(raum, index, kartenName) {
   if (!karte) return;
   raum.kartenAuswahl.set(index, karte);
   raum.antwortenAusstehend.delete(index);
+  sendeAnAlle(raum, 'kartePlatziert', { spielerIndex: index });
 
   if (raum.antwortenAusstehend.size === 0) {
     starteUltimatePhase(raum);
@@ -319,6 +322,7 @@ function starteSpiel(raum) {
       })),
       staende: staende(raum),
       handGroesse: HAND_GROESSE,
+      kategorien: KATEGORIEN,
     });
   });
 
