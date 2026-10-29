@@ -19,25 +19,31 @@
     </header>
 
     <!-- Ladebildschirm: sichtbar bis die Verbindung zum Server steht (Render
-         kann beim ersten Verbinden 30-60s zum Aufwachen brauchen).
+         kann beim ersten Verbinden 30-60s zum Aufwachen brauchen). Das Video
+         liegt als Vollbild-Hintergrund ueber dem GESAMTEN Display, Titel und
+         Text schweben darueber.
 
          EIGENES ARTWORK HINZUFUEGEN: lege eine Videodatei (loop-faehig, kurz)
          unter docs/images/lade-artwork.mp4 ab - sie wird hier automatisch
-         stumm und in Dauerschleife abgespielt. Bis die Datei existiert, bleibt
-         der Platzhalter-Icon mit Schimmer-Effekt sichtbar (kein Fehler, kein
-         Eingriff noetig). Siehe auch docs/images/README.md. -->
+         stumm und in Dauerschleife abgespielt, randlos ueber den ganzen
+         Bildschirm skaliert (object-fit: cover). Bis die Datei existiert,
+         bleibt der Platzhalter-Icon mit Schimmer-Effekt sichtbar (kein
+         Fehler, kein Eingriff noetig). Siehe auch docs/images/README.md. -->
     <section id="lade-bildschirm" class="bildschirm">
-      <div class="lade-artwork">
-        <video id="lade-artwork-video" class="lade-artwork-video" autoplay loop muted playsinline
-               onerror="this.style.display='none'">
-          <source src="images/lade-artwork.mp4" type="video/mp4" />
-        </video>
-        <div class="lade-artwork-platzhalter" aria-hidden="true">
-          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M24 4 44 14v12c0 12-8.5 19.5-20 22C12.5 45.5 4 38 4 26V14Z" stroke-linejoin="round"/></svg>
-        </div>
+      <video id="lade-artwork-video" class="lade-artwork-video" autoplay loop muted playsinline
+             onerror="this.style.display='none'">
+        <source src="images/lade-artwork.mp4" type="video/mp4" />
+      </video>
+      <div class="lade-artwork-platzhalter" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M24 4 44 14v12c0 12-8.5 19.5-20 22C12.5 45.5 4 38 4 26V14Z" stroke-linejoin="round"/></svg>
       </div>
-      <p class="lade-text">Verbinde mit dem Server<span class="lade-punkte"><span>.</span><span>.</span><span>.</span></span></p>
-      <p class="lade-hinweis">Kann beim ersten Verbinden bis zu 60 Sekunden dauern - der Server wacht gerade auf.</p>
+      <div class="lade-scrim" aria-hidden="true"></div>
+      <div class="lade-inhalt">
+        <h1 class="titel-hero" data-text="SHOWDOWN">SHOWDOWN</h1>
+        <span class="unterzeile">MARVEL QUARTETT</span>
+        <p class="lade-text">Verbinde mit dem Server<span class="lade-punkte"><span>.</span><span>.</span><span>.</span></span></p>
+        <p class="lade-hinweis">Kann beim ersten Verbinden bis zu 60 Sekunden dauern - der Server wacht gerade auf.</p>
+      </div>
     </section>
 
     <!-- Startbildschirm -->
@@ -154,6 +160,14 @@
         </div>
       </div>
     </section>
+
+    <!-- Hinweis fuer Handys im Hochformat - der Tisch hat eine feste Groesse
+         und ist im Querformat am besten spielbar (siehe style.css Medienabfrage). -->
+    <div class="dreh-hinweis">
+      <div class="dreh-hinweis-icon" aria-hidden="true">📱</div>
+      <p>Bitte dein Gerät drehen</p>
+      <p class="dreh-hinweis-klein">SHOWDOWN ist im Querformat am besten spielbar.</p>
+    </div>
 
     <!-- Spielende -->
     <section id="ende-bildschirm" class="bildschirm versteckt">

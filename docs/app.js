@@ -1,6 +1,10 @@
-// Nach dem Deployment anpassen, falls der Server umzieht.
+// Nach dem Deployment anpassen, falls der Server umzieht. Lokal immer denselben
+// Port wie die Seite selbst verwenden (server.js liefert docs/ und Socket.IO
+// vom selben Prozess aus) - so klappt es auch, wenn der Standardport 3001
+// gerade belegt ist und der Dev-Server automatisch auf einen anderen Port
+// ausweicht.
 const SOCKET_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-  ? `${location.protocol}//${location.hostname}:3001`
+  ? `${location.protocol}//${location.hostname}:${location.port || 3001}`
   : 'https://showdown-marvel-web.onrender.com';
 
 const socket = io(SOCKET_URL);
@@ -15,19 +19,48 @@ const bildschirme = {
 
 const menuWidget = document.getElementById('menu-widget');
 
+// Der Tisch hat eine feste Design-Groesse (siehe --tisch-breite/-hoehe in
+// style.css) und wird nie einzeln responsive umgebaut - stattdessen wird er
+// als Ganzes gleichmaessig herunterskaliert, damit er auf jedem Fenster
+// IMMER gleich aussieht (nur kleiner/groesser, nie anders umbrechend).
+const TISCH_BREITE = 900;
+const TISCH_HOEHE = 780;
+
+function aktualisiereTischSkalierung() {
+  if (!document.body.classList.contains('im-spiel')) return;
+  const rand = 16;
+  const skala = Math.min(
+    1,
+    (window.innerWidth - rand) / TISCH_BREITE,
+    (window.innerHeight - rand) / TISCH_HOEHE,
+  );
+  document.documentElement.style.setProperty('--tisch-skala', skala);
+}
+
+window.addEventListener('resize', aktualisiereTischSkalierung);
+window.addEventListener('orientationchange', aktualisiereTischSkalierung);
+
 function zeigeBildschirm(name) {
   Object.values(bildschirme).forEach((el) => el.classList.add('versteckt'));
   bildschirme[name].classList.remove('versteckt');
   // Waehrend des eigentlichen Spiels keinen Platz fuer den Titel verschwenden -
   // soll sich moeglichst wie Vollbild anfuehlen.
   document.body.classList.toggle('im-spiel', name === 'spiel');
+  if (name === 'spiel') aktualisiereTischSkalierung();
   // Menue + Chat ("wie am selben Tisch sitzen") gibt es erst, sobald ein Raum
   // existiert - nicht auf dem Lade- oder Startbildschirm.
   menuWidget.classList.toggle('versteckt', name === 'lade' || name === 'start');
 }
 
+// Mindestens kurz sichtbar lassen, auch wenn die Verbindung (z. B. lokal)
+// sofort steht - sonst sieht man das Ladebildschirm-Artwork nie.
+const LADEBILDSCHIRM_MINDESTDAUER_MS = 1200;
+const ladeStart = Date.now();
+
 socket.on('connect', () => {
-  if (!bildschirme.lade.classList.contains('versteckt')) zeigeBildschirm('start');
+  if (bildschirme.lade.classList.contains('versteckt')) return;
+  const verbleibend = LADEBILDSCHIRM_MINDESTDAUER_MS - (Date.now() - ladeStart);
+  setTimeout(() => zeigeBildschirm('start'), Math.max(0, verbleibend));
 });
 
 function setzeFehler(text) {
@@ -502,6 +535,10 @@ socket.on('waehleAntwortkarte', ({ kategorie, kategorien, hand }) => {
 // ---------- Ultimate ----------
 
 socket.on('ultimateAbfrage', () => {
+  // Die vorige Phase (eigene Karte ODER Antwortkarte) ausblenden - sonst
+  // stehen beide Karten gleichzeitig da und der Tisch wird unnoetig hoch.
+  eigeneKarteBereich.classList.add('versteckt');
+  antwortkarteBereich.classList.add('versteckt');
   ultimateBereich.classList.remove('versteckt');
 });
 
@@ -782,7 +819,12 @@ socket.on('sprachSignal', async ({ von, daten }) => {
   }
 });
 
-document.getElementById('btn-sprachchat').addEventListener('click', async (e) => {
+document.getElementById('btn-sprachchat').addEventListener('click', async () => {
+  // Wichtig: niemals e.currentTarget nach einem await verwenden - das Event ist
+  // dann schon fertig propagiert und currentTarget wird zu null (der Button
+  // blieb deshalb bisher immer auf "Aus" stehen). Stattdessen das Element
+  // direkt per ID holen.
+  const knopf = document.getElementById('btn-sprachchat');
   if (!sprachAktiv) {
     try {
       eigenerAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -791,13 +833,13 @@ document.getElementById('btn-sprachchat').addEventListener('click', async (e) =>
       return;
     }
     sprachAktiv = true;
-    e.currentTarget.textContent = '🎙️ Sprachchat: An';
-    e.currentTarget.classList.add('aktiv');
+    knopf.textContent = '🎙️ Sprachchat: An';
+    knopf.classList.add('aktiv');
     socket.emit('sprachBeitreten');
   } else {
     sprachAktiv = false;
-    e.currentTarget.textContent = '🎙️ Sprachchat: Aus';
-    e.currentTarget.classList.remove('aktiv');
+    knopf.textContent = '🎙️ Sprachchat: Aus';
+    knopf.classList.remove('aktiv');
     socket.emit('sprachVerlassen');
     Object.keys(sprachVerbindungen).forEach((i) => sprachVerbindungSchliessen(Number(i)));
     eigenerAudioStream?.getTracks().forEach((t) => t.stop());

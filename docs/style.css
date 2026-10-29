@@ -1,4 +1,7 @@
 :root {
+  --tisch-breite: 900px;
+  --tisch-hoehe: 780px;
+  --tisch-skala: 1;
   --bg: #050507;
   --bg2: #0c0b10;
   --panel: #111017;
@@ -14,7 +17,10 @@
   --rueckseite-dunkel: #230a0e;
   --rueckseite-hell: #3a0f14;
   --font-display: "Bebas Neue", "Oswald", "Arial Narrow", sans-serif;
-  --font-body: "Inter", "Segoe UI", Arial, sans-serif;
+  /* Emoji-Schriften am Ende der Kette - damit Apple/Samsung/Windows-Emojis
+     (Chat, 🎙️/🎵/🏆 usw.) ueberall als echte, bunte Emojis dargestellt
+     werden statt als Inter/Segoe-Textglyphen. */
+  --font-body: "Inter", "Segoe UI", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
 }
 
 * {
@@ -42,9 +48,7 @@ body {
 }
 
 /* Waehrend des Spiels verschwindet der Titel - mehr Platz fuer den Tisch,
-   fuehlt sich dadurch eher nach Vollbild an. Der Tisch ist zudem auf die
-   Fensterhoehe fixiert statt die ganze Seite scrollen zu lassen - nur wenn
-   wirklich zu viel Inhalt da ist, scrollt der Tisch selbst (nicht die Seite). */
+   fuehlt sich dadurch eher nach Vollbild an. */
 body.im-spiel {
   padding-top: 8px;
   padding-bottom: 8px;
@@ -59,24 +63,98 @@ body.im-spiel .kopfzeile {
 
 body.im-spiel #app {
   height: 100%;
-  display: flex;
-  flex-direction: column;
+  position: relative;
 }
 
+/* Der Tisch hat IMMER die gleiche feste Design-Groesse (--tisch-breite x
+   --tisch-hoehe) - das Layout darin wird also nie unterschiedlich umbrechen
+   oder verzerrt aussehen. Auf kleineren Fenstern wird er per JS (siehe app.js,
+   aktualisiereTischSkalierung) als Ganzes gleichmaessig herunterskaliert statt
+   einzelne Elemente responsive zu verkleinern - "nur der Rest ist responsive".
+   Position: absolute + translate statt Flexbox-Zentrierung, damit die volle
+   (nicht skalierte) Groesse nie die Seite zum Ueberlaufen bringt. */
 body.im-spiel #spiel-bildschirm {
-  flex: 1;
-  min-height: 0;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--tisch-breite);
+  height: var(--tisch-hoehe);
+  margin: 0;
+  flex: none;
+  transform: translate(-50%, -50%) scale(var(--tisch-skala));
+  transform-origin: center center;
   overflow: hidden auto;
-  padding: 10px 22px 14px;
-  gap: 6px;
+  padding: 14px 24px 16px;
+  gap: 8px;
 }
 
 body.im-spiel .hand-fan-wrapper {
-  padding-top: 34px;
+  padding-top: 44px;
 }
 
-body.im-spiel .karten-bereich {
-  gap: 8px;
+/* Haessliche native Scrollbar verstecken - Inhalt bleibt per Wheel/Touch
+   trotzdem erreichbar (Notbremse falls doch mal zu viel Inhalt da ist), sieht
+   aber nicht nach Geraet-Chrome aus. */
+body.im-spiel #spiel-bildschirm,
+.hand-fan-wrapper {
+  scrollbar-width: none;
+}
+
+body.im-spiel #spiel-bildschirm::-webkit-scrollbar,
+.hand-fan-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- Handy im Hochformat: Hinweis statt verzerrtem Tisch ---------- */
+
+.dreh-hinweis {
+  display: none;
+}
+
+@media (max-width: 900px) and (orientation: portrait) {
+  body.im-spiel #spiel-bildschirm,
+  body.im-spiel .menu-widget {
+    display: none;
+  }
+
+  body.im-spiel .dreh-hinweis {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: var(--bg);
+    text-align: center;
+    padding: 24px;
+  }
+}
+
+.dreh-hinweis-icon {
+  font-size: 3rem;
+  animation: dreh-hinweis-drehen 1.8s ease-in-out infinite;
+}
+
+@keyframes dreh-hinweis-drehen {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(90deg); }
+}
+
+.dreh-hinweis p {
+  margin: 0;
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+  font-size: 1.2rem;
+}
+
+.dreh-hinweis .dreh-hinweis-klein {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--muted);
+  letter-spacing: normal;
+  max-width: 280px;
 }
 
 /* Kino-Vignette: dunklere Raender, heller in der Mitte - statt Comic-Halbton */
@@ -175,23 +253,15 @@ body.im-spiel .karten-bereich {
   align-items: stretch;
 }
 
-/* ---------- Ladebildschirm ---------- */
+/* ---------- Ladebildschirm: Video als Vollbild-Hintergrund ---------- */
 
 #lade-bildschirm {
-  padding: 40px 0 10px;
-}
-
-.lade-artwork {
-  width: 220px;
-  aspect-ratio: 2 / 3;
-  border-radius: 14px;
-  background: linear-gradient(165deg, var(--panel), #08070a);
-  border: 1px solid var(--panel-rand);
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  padding: 0;
+  margin: 0;
+  background: #000;
   overflow: hidden;
 }
 
@@ -201,11 +271,22 @@ body.im-spiel .karten-bereich {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  z-index: 1;
+  z-index: 0;
 }
 
-/* Schimmer deutet an, dass hier spaeter ein echtes Artwork hinkommt */
-.lade-artwork::after {
+/* Schimmer deutet an, dass hier spaeter ein echtes Artwork hinkommt - laeuft
+   ueber den gesamten Bildschirm, solange noch kein Video existiert. */
+.lade-artwork-platzhalter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 0;
+  background: linear-gradient(165deg, var(--panel), #08070a);
+}
+
+.lade-artwork-platzhalter::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -219,20 +300,46 @@ body.im-spiel .karten-bereich {
   100% { background-position: -50% 0; }
 }
 
-.lade-artwork-platzhalter {
+.lade-artwork-platzhalter svg {
+  position: relative;
   width: 72px;
   height: 72px;
   color: var(--gold);
   opacity: 0.4;
 }
 
-.lade-artwork-platzhalter svg { width: 100%; height: 100%; }
+/* Dunkler werdender Verlauf von unten, damit Titel/Text auf dem Video immer
+   lesbar bleiben, egal wie hell die jeweilige Videostelle gerade ist. */
+.lade-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 30%, rgba(0,0,0,0.35) 65%, rgba(0,0,0,0.85) 100%);
+}
+
+.lade-inhalt {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 24px 16px 56px;
+  text-align: center;
+}
+
+.lade-inhalt .titel-hero { margin: 0; }
 
 .lade-text {
   font-family: var(--font-display);
   letter-spacing: 0.1em;
   color: var(--text);
   font-size: 1.1rem;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
 }
 
 .lade-punkte span {
@@ -252,7 +359,8 @@ body.im-spiel .karten-bereich {
   color: var(--muted);
   font-size: 0.8rem;
   text-align: center;
-  max-width: 320px;
+  max-width: 340px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
 
 /* ---------- Pokertisch: Spielbildschirm ---------- */
@@ -935,7 +1043,7 @@ input[type="text"]:focus {
 }
 
 .spielkarte.kompakt .bild-rahmen {
-  height: 195px;
+  height: 130px;
 }
 
 .karten-bild {
@@ -1063,8 +1171,24 @@ input[type="text"]:focus {
 /* ---------- Kategorie-Auswahl direkt auf der Karte ---------- */
 
 .spielkarte.kompakt {
-  max-width: 280px;
+  max-width: 250px;
 }
+
+/* 2 statt 3 Spalten: breitere Zellen, damit lange Kategorienamen (z. B.
+   "Widerstandsfaehigkeit") nicht zweizeilig umbrechen und die Karte unnoetig
+   hoch machen. */
+.spielkarte.kompakt .attribut-raster {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+}
+
+.spielkarte.kompakt .attribut-zelle { padding: 3px 3px; }
+.spielkarte.kompakt .attribut-label { font-size: 0.5rem; line-height: 1.05; }
+.spielkarte.kompakt .attribut-icon { width: 14px; height: 14px; }
+.spielkarte.kompakt .attribut-wert { font-size: 0.78rem; }
+.spielkarte.kompakt .name { font-size: 1.05rem; margin-bottom: 4px; }
+.spielkarte.kompakt .karte-info { padding: 8px 10px 9px; }
+.spielkarte.kompakt .gesamtstaerke-zeile { font-size: 0.72rem; margin-top: 5px; padding-top: 4px; }
 
 /* ---------- Attribut-Raster: Bild bleibt immer sichtbar, darunter 3x2 ---------- */
 
@@ -1164,9 +1288,9 @@ input[type="text"]:focus {
    als die Kartenrueckseiten der Gegner und beim Hover/Klick foermlich
    "groesser werden". */
 .hand-karte {
-  flex: 0 0 150px;
-  max-width: 150px;
-  margin-left: -48px;
+  flex: 0 0 140px;
+  max-width: 140px;
+  margin-left: -45px;
   cursor: pointer;
   z-index: 1;
   transition: transform 0.18s ease, box-shadow 0.18s ease, z-index 0s;
@@ -1177,14 +1301,14 @@ input[type="text"]:focus {
 }
 
 .hand-karte:hover {
-  transform: perspective(900px) rotateX(1deg) translateY(-22px) scale(1.14);
+  transform: perspective(900px) rotateX(1deg) translateY(-16px) scale(1.1);
   z-index: 5;
   box-shadow: 0 26px 44px -8px rgba(0, 0, 0, 0.75), 0 0 22px rgba(212, 175, 100, 0.3);
 }
 
-.hand-karte .bild-rahmen { height: 100px; }
-.hand-karte .karte-info { padding: 6px 8px 8px; }
-.hand-karte .name { font-size: 0.78rem; margin-bottom: 3px; }
+.hand-karte .bild-rahmen { height: 92px; }
+.hand-karte .karte-info { padding: 5px 7px 7px; }
+.hand-karte .name { font-size: 0.72rem; margin-bottom: 3px; }
 .hand-karte .attribut-raster { gap: 4px; margin: 4px 0; }
 .hand-karte .attribut-zelle { padding: 4px 1px; gap: 2px; }
 /* Bei dieser kleinen Faecher-Groesse keine Text-Labels - nur Icon + Wert,
@@ -1309,8 +1433,18 @@ input[type="text"]:focus {
 }
 
 .duell-raster .spielkarte {
-  max-width: 230px;
+  max-width: 220px;
 }
+
+.duell-raster .spielkarte .bild-rahmen { height: 125px; }
+.duell-raster .spielkarte .attribut-raster { grid-template-columns: repeat(2, 1fr); gap: 5px; }
+.duell-raster .spielkarte .attribut-zelle { padding: 5px 3px; }
+.duell-raster .spielkarte .attribut-label { font-size: 0.5rem; line-height: 1.1; }
+.duell-raster .spielkarte .attribut-icon { width: 15px; height: 15px; }
+.duell-raster .spielkarte .attribut-wert { font-size: 0.78rem; }
+.duell-raster .spielkarte .name { font-size: 1rem; margin-bottom: 4px; }
+.duell-raster .spielkarte .karte-info { padding: 7px 9px 8px; }
+.duell-raster .spielkarte .gesamtstaerke-zeile { font-size: 0.7rem; margin-top: 4px; padding-top: 4px; }
 
 .ultimate-meldung {
   color: var(--gold-hell);
@@ -1611,10 +1745,10 @@ input[type="text"]:focus {
 @media (max-width: 480px) {
   .titel-hero { font-size: 2.8rem; }
   .panel { max-width: 100%; }
-  .duell-raster .spielkarte { max-width: 100%; }
-  .duell-zeile { flex-direction: column; }
-  .hand-karte { flex-basis: 108px; max-width: 108px; margin-left: -36px; }
-  .karten-rueckseite { width: 32px; height: 46px; margin-left: -16px; }
+  /* Der Tisch selbst (Handkarten, Kartenrueckseiten, Duell-Karten) braucht
+     hier keine eigenen Regeln mehr - er skaliert als Ganzes (siehe
+     body.im-spiel #spiel-bildschirm). Menue/Chat sind davon unabhaengig, weil
+     sie fix am Fensterrand haengen statt Teil des Tisches zu sein. */
   .menu-widget { top: 8px; right: 8px; }
   .menu-fenster { width: calc(100vw - 16px); max-width: 320px; height: 70vh; }
 }
