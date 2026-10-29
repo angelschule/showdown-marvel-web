@@ -22,17 +22,22 @@ const menuWidget = document.getElementById('menu-widget');
 // Der Tisch hat eine feste Design-Groesse (siehe --tisch-breite/-hoehe in
 // style.css) und wird nie einzeln responsive umgebaut - stattdessen wird er
 // als Ganzes gleichmaessig herunterskaliert, damit er auf jedem Fenster
-// IMMER gleich aussieht (nur kleiner/groesser, nie anders umbrechend).
-const TISCH_BREITE = 900;
-const TISCH_HOEHE = 780;
-
+// IMMER gleich aussieht (nur kleiner/groesser, nie anders umbrechend). Die
+// Design-Groesse selbst wird per CSS-Medienabfrage fuer schmale/niedrige
+// Fenster (Handy quer) auf eine kompaktere Groesse umgestellt - deshalb wird
+// sie hier aus den aktuell geltenden CSS-Variablen gelesen statt fest codiert,
+// damit bei Handy-Aufloesungen moeglichst Skala 1 (gestochen scharf, nicht
+// verkleinert) herauskommt statt eines winzig skalierten Riesentisches.
 function aktualisiereTischSkalierung() {
   if (!document.body.classList.contains('im-spiel')) return;
+  const stil = getComputedStyle(document.documentElement);
+  const tischBreite = parseFloat(stil.getPropertyValue('--tisch-breite')) || 900;
+  const tischHoehe = parseFloat(stil.getPropertyValue('--tisch-hoehe')) || 780;
   const rand = 16;
   const skala = Math.min(
     1,
-    (window.innerWidth - rand) / TISCH_BREITE,
-    (window.innerHeight - rand) / TISCH_HOEHE,
+    (window.innerWidth - rand) / tischBreite,
+    (window.innerHeight - rand) / tischHoehe,
   );
   document.documentElement.style.setProperty('--tisch-skala', skala);
 }
@@ -377,9 +382,14 @@ function kartenHtml(karte, besitzerLabel, kategorie) {
 
 // Interaktive Anzeige (eigene Kategoriewahl): Bild bleibt sichtbar, das
 // Attribut-Raster darunter ist direkt anklickbar - kein Overlay auf dem Bild.
+// Oben rechts ein kleiner Zurueck-Pfeil, falls aus Versehen die falsche Karte
+// gewaehlt wurde (legt sie zurueck in die Hand).
 function kartenHtmlIconReihe(karte) {
   return `
     ${bildRahmenHtml(karte, null)}
+    <button type="button" id="btn-karte-zurueck" class="btn-karte-zurueck" aria-label="Andere Karte waehlen" title="Andere Karte waehlen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+    </button>
     <div class="karte-info">
       <div class="name">${karte.name}</div>
       ${attributRasterHtml(karte, { interaktiv: true })}
@@ -460,6 +470,10 @@ socket.on('waehleKategorieFuerKarte', ({ karte, kategorien }) => {
   karteEl.innerHTML = kartenHtmlIconReihe(karte);
   karteEl.className = `spielkarte kompakt ${karte.typSymbol.toLowerCase()}`;
   aktiviereAttributKlicks(karteEl);
+  document.getElementById('btn-karte-zurueck').addEventListener('click', (e) => {
+    e.stopPropagation();
+    socket.emit('eigeneKarteZurueck');
+  });
 });
 
 socket.on('wartenAufSpieler', ({ name, index }) => {

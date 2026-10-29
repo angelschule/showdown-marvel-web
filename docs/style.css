@@ -30,6 +30,11 @@
 html, body {
   margin: 0;
   min-height: 100vh;
+  /* Verhindert den weissen Rand/"Gummizug"-Effekt beim Ueberziehen am Rand
+     (iOS/Android) - ohne das waere beim Rueberscrollen kurz die weisse
+     Standardflaeche von <html> statt unseres dunklen Hintergrunds sichtbar. */
+  background: var(--bg);
+  overscroll-behavior: none;
 }
 
 body {
@@ -44,6 +49,7 @@ body {
   padding: 24px 16px 60px;
   position: relative;
   overflow-x: hidden;
+  overscroll-behavior: none;
   transition: padding-top 0.2s ease;
 }
 
@@ -1113,6 +1119,35 @@ input[type="text"]:focus {
   z-index: 1;
 }
 
+/* Kleiner Zurueck-Pfeil am Rand der Kategorie-Karte - falls aus Versehen die
+   falsche Karte gewaehlt wurde, legt er sie zurueck in die Hand. Sitzt am
+   Eck der Karte, halb ueberlappend, damit er sich klar vom Typ-Tag abhebt. */
+.btn-karte-zurueck {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  padding: 5px;
+  border-radius: 50%;
+  background: linear-gradient(165deg, var(--panel), #08070a);
+  border: 1px solid rgba(201, 163, 95, 0.5);
+  color: var(--gold-hell);
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-karte-zurueck svg { width: 100%; height: 100%; }
+
+.btn-karte-zurueck:hover {
+  border-color: var(--gold);
+  transform: scale(1.08);
+}
+
 .bild-rahmen .besitzer {
   position: absolute;
   top: 10px;
@@ -1759,4 +1794,84 @@ input[type="text"]:focus {
     transform: perspective(900px) rotateX(1deg) translateY(-18px) scale(1.1);
     z-index: 5;
   }
+}
+
+/* ---------- Handy im Querformat: eigene, kompakte Design-Groesse ----------
+   Auf einem Handy-Bildschirm waere der Desktop-Tisch (900x780) so stark
+   herunterskaliert, dass Text/Icons winzig und unscharf werden. Deshalb
+   bekommt dieser Bereich eine eigene, kleinere feste Design-Groesse (naeher
+   an echten Handy-Aufloesungen, siehe aktualisiereTischSkalierung in app.js)
+   UND kompaktere Bauteile - das Ergebnis ist meist Skala 1 (gestochen scharf)
+   statt eines winzigen verkleinerten Riesentisches. Das ist der "responsive"
+   Teil fuer Mobilgeraete; der Tisch bleibt innerhalb dieser Groesse trotzdem
+   fest/stabil. Dieser Block steht bewusst ganz am Ende der Datei, damit er
+   alle vorherigen (unconditional) Groessen-Regeln zuverlaessig ueberschreibt. */
+@media (max-width: 900px) and (orientation: landscape) {
+  :root {
+    --tisch-breite: 700px;
+    --tisch-hoehe: 380px;
+  }
+
+  body.im-spiel #spiel-bildschirm {
+    padding: 6px 14px 8px;
+    gap: 3px;
+    border-width: 4px;
+  }
+
+  body.im-spiel .hand-fan-wrapper { padding: 20px 10px 4px; }
+  body.im-spiel .karten-bereich { gap: 2px; }
+
+  .hand-karte { flex-basis: 84px; max-width: 84px; margin-left: -26px; }
+  .hand-karte .bild-rahmen { height: 42px; }
+  .hand-karte .karte-info { padding: 2px 4px 3px; }
+  .hand-karte .name { font-size: 0.56rem; margin-bottom: 1px; }
+  .hand-karte .attribut-raster { gap: 1px; margin: 1px 0; }
+  .hand-karte .attribut-zelle { padding: 1px 1px; }
+  .hand-karte .attribut-icon { width: 9px; height: 9px; }
+  .hand-karte .attribut-wert { font-size: 0.52rem; }
+  .hand-karte .gesamtstaerke-zeile { font-size: 0.46rem; margin-top: 1px; padding-top: 1px; }
+
+  .karten-rueckseite { width: 18px; height: 26px; margin-left: -9px; }
+  .gegner-hand-label { font-size: 0.5rem; }
+  .gegner-hand-gruppe { gap: 2px; }
+  .gegner-stapel-reihe { gap: 4px; }
+
+  .stapel-grafik { width: 24px; height: 32px; }
+  .stapel-titel { font-size: 0.38rem; }
+  .stapel-anzahl { font-size: 0.68rem; }
+  .stapel-gruppe { gap: 1px; }
+
+  .score-leiste { gap: 6px; }
+  .score-chip { font-size: 0.62rem; padding: 2px 6px; }
+  .runden-anzeige { font-size: 0.64rem; }
+  .status-zeile { font-size: 0.64rem; min-height: 1.1em; }
+  .mini-titel { font-size: 0.68rem; margin-bottom: 2px; }
+
+  /* Breiter statt hoch (im Querformat ist mehr Breite als Hoehe da) - das
+     haelt die 2-spaltige Raster-Zeile niedrig, weil die Kategorienamen
+     seltener umbrechen. */
+  .spielkarte.kompakt { max-width: 210px; }
+  .spielkarte.kompakt .bild-rahmen { height: 46px; }
+  .spielkarte.kompakt .karte-info { padding: 3px 7px 4px; }
+  .spielkarte.kompakt .name { font-size: 0.66rem; margin-bottom: 1px; }
+  .spielkarte.kompakt .attribut-raster { gap: 1px; margin: 1px 0; }
+  .spielkarte.kompakt .attribut-zelle { padding: 0 2px; }
+  .spielkarte.kompakt .attribut-label { font-size: 0.36rem; line-height: 1; }
+  .spielkarte.kompakt .attribut-icon { width: 8px; height: 8px; }
+  .spielkarte.kompakt .attribut-wert { font-size: 0.54rem; }
+  .spielkarte.kompakt .gesamtstaerke-zeile { font-size: 0.46rem; margin-top: 1px; padding-top: 1px; }
+  .btn-karte-zurueck { width: 18px; height: 18px; padding: 4px; top: -5px; right: -5px; }
+
+  .duell-raster { gap: 6px; }
+  .duell-raster .spielkarte { max-width: 130px; }
+  .duell-raster .spielkarte .bild-rahmen { height: 60px; }
+  .impakt-titel { font-size: 1.3rem; }
+  .ergebnis-text { font-size: 0.85rem; }
+
+  .eigener-tisch { gap: 10px; }
+
+  .menu-widget { top: 4px; right: 4px; }
+  .menu-toggle { height: 26px; padding: 0 8px; gap: 4px; }
+  .menu-toggle-label { font-size: 0.6rem; }
+  .menu-fenster { width: 240px; height: 240px; }
 }

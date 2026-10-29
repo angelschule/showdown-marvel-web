@@ -187,6 +187,17 @@ function waehleEigeneKarte(raum, kartenName) {
   sendeAnAlle(raum, 'kartePlatziert', { spielerIndex: raum.aktiverIndex });
 }
 
+// Versehentlich falsche Karte gewaehlt: legt sie zurueck in die Hand und
+// zeigt die Handauswahl erneut - nur erlaubt, solange noch keine Kategorie
+// gewaehlt wurde.
+function eigeneKarteZurueck(raum) {
+  if (raum.phase !== 'warteAufKategorie' || !raum.aktiveKarte) return;
+  const aktiv = raum.spieler[raum.aktiverIndex];
+  aktiv.zustand.hand.push(raum.aktiveKarte);
+  raum.aktiveKarte = null;
+  naechsterZug(raum);
+}
+
 // ---------- Schritt 2: aktiver Spieler waehlt die Kategorie fuer diese Karte ----------
 
 function waehleKategorie(raum, kategorie) {
@@ -434,6 +445,12 @@ io.on('connection', (socket) => {
     const raum = raeume.get(socket.data.raumCode);
     if (!raum || raum.phase !== 'warteAufEigeneKarte' || socket.data.sitz !== raum.aktiverIndex) return;
     waehleEigeneKarte(raum, kartenName);
+  });
+
+  socket.on('eigeneKarteZurueck', () => {
+    const raum = raeume.get(socket.data.raumCode);
+    if (!raum || raum.phase !== 'warteAufKategorie' || socket.data.sitz !== raum.aktiverIndex) return;
+    eigeneKarteZurueck(raum);
   });
 
   socket.on('kategorieWaehlen', ({ kategorie } = {}) => {
