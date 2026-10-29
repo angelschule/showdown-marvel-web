@@ -112,8 +112,9 @@ document.getElementById('btn-spiel-starten').addEventListener('click', () => {
 socket.on('spielGestartet', (daten) => {
   meinIndex = daten.meinIndex;
   spielerListe = daten.spieler;
-  letzteStaende = daten.spieler;
+  letzteStaende = daten.staende;
   renderScoreLeiste(letzteStaende, null);
+  renderGegnerHaende(letzteStaende);
   document.getElementById('runden-anzeige').textContent = 'RUNDE 0 / 15';
   zeigeBildschirm('spiel');
 });
@@ -125,8 +126,33 @@ function renderScoreLeiste(staendeArray, aktiverIndex) {
     const chip = document.createElement('div');
     chip.className = 'score-chip' + (i === aktiverIndex ? ' ist-dran' : '');
     const label = i === meinIndex ? `${s.name} (Du)` : s.name;
-    chip.innerHTML = `<span class="punkt"></span>${label}: ${s.anzahl}`;
+    chip.innerHTML = `<span class="punkt"></span>${label}: ${s.anzahl} <span class="gewonnen-badge" title="Gewonnene Karten">🏆${s.gewonnenAnzahl}</span>`;
     leiste.appendChild(chip);
+  });
+}
+
+// Zeigt die Haende der anderen Spieler als verdeckte Kartenrueckseiten -
+// man sieht, wie viele Karten sie haben, aber nicht welche.
+function renderGegnerHaende(staendeArray) {
+  const container = document.getElementById('gegner-haende');
+  container.innerHTML = '';
+  staendeArray.forEach((s, i) => {
+    if (i === meinIndex) return;
+    const gruppe = document.createElement('div');
+    gruppe.className = 'gegner-hand-gruppe';
+    const label = document.createElement('div');
+    label.className = 'gegner-hand-label';
+    label.textContent = s.name;
+    const reihe = document.createElement('div');
+    reihe.className = 'gegner-hand-reihe';
+    for (let k = 0; k < s.handAnzahl; k += 1) {
+      const rueckseite = document.createElement('div');
+      rueckseite.className = 'karten-rueckseite';
+      reihe.appendChild(rueckseite);
+    }
+    gruppe.appendChild(label);
+    gruppe.appendChild(reihe);
+    container.appendChild(gruppe);
   });
 }
 
@@ -286,23 +312,49 @@ function animiereBalken(scope) {
   });
 }
 
-socket.on('deinZug', ({ eigeneKarte, kategorien, index }) => {
+const eigeneHandBereich = document.getElementById('eigene-hand-bereich');
+
+socket.on('waehleEigeneKarte', ({ hand }) => {
+  statusZeile.textContent = 'Du bist am Zug - waehle eine Karte aus deiner Hand';
+  eigeneHandBereich.classList.remove('versteckt');
+  eigeneKarteBereich.classList.add('versteckt');
+  antwortkarteBereich.classList.add('versteckt');
+  ultimateBereich.classList.add('versteckt');
+  ergebnisBereich.classList.add('versteckt');
+  renderScoreLeiste(letzteStaende, meinIndex);
+
+  const raster = document.getElementById('eigene-hand-raster');
+  raster.innerHTML = hand.map((karte) => handKarteHtml(karte, null, [])).join('');
+  raster.querySelectorAll('.hand-karte').forEach((el) => {
+    el.addEventListener('click', () => {
+      socket.emit('eigeneKarteWaehlen', { kartenName: el.dataset.name });
+      eigeneHandBereich.classList.add('versteckt');
+      statusZeile.textContent = 'Waehle eine Kategorie fuer diese Karte...';
+    });
+  });
+});
+
+socket.on('waehleKategorieFuerKarte', ({ karte, kategorien }) => {
   KATEGORIEN_ANZEIGE = kategorien;
-  statusZeile.textContent = 'Du bist am Zug - waehle eine Kategorie';
+  statusZeile.textContent = 'Waehle eine Kategorie fuer deine Karte';
+  eigeneHandBereich.classList.add('versteckt');
   eigeneKarteBereich.classList.remove('versteckt');
   antwortkarteBereich.classList.add('versteckt');
   ultimateBereich.classList.add('versteckt');
   ergebnisBereich.classList.add('versteckt');
-  renderScoreLeiste(letzteStaende, index);
 
   const karteEl = document.getElementById('eigene-karte');
-  karteEl.innerHTML = kartenHtmlIconReihe(eigeneKarte);
-  karteEl.className = `spielkarte kompakt ${eigeneKarte.typSymbol.toLowerCase()}`;
+  karteEl.innerHTML = kartenHtmlIconReihe(karte);
+  karteEl.className = `spielkarte kompakt ${karte.typSymbol.toLowerCase()}`;
   aktiviereKategorieOverlay(karteEl);
+  // Die Kartenwahl ist bereits getroffen - das Kategorie-Raster steht sofort offen.
+  karteEl.querySelector('.kategorie-overlay').classList.remove('versteckt');
+  karteEl.querySelector('.klick-hinweis').classList.add('versteckt');
 });
 
 socket.on('wartenAufSpieler', ({ name, index }) => {
   statusZeile.textContent = `${name} waehlt gerade die Kategorie...`;
+  eigeneHandBereich.classList.add('versteckt');
   eigeneKarteBereich.classList.add('versteckt');
   antwortkarteBereich.classList.add('versteckt');
   ultimateBereich.classList.add('versteckt');
@@ -314,22 +366,33 @@ socket.on('wartenAufSpieler', ({ name, index }) => {
 
 const antwortkarteBereich = document.getElementById('antwortkarte-bereich');
 
+// kategorie=null -> Modus "eigene Karte waehlen": zeigt die Gesamtstaerke,
+// da noch keine Kategorie feststeht. Sonst zeigt es den Wert dieser Kategorie.
 function handKarteHtml(karte, kategorie, kategorien) {
-  const index = kategorien.indexOf(kategorie);
-  const wert = index >= 0 ? karte.werte[index] : '?';
   const typKlasse = karte.typSymbol.toLowerCase();
+  let hauptwert;
+  let hauptlabel;
+  if (kategorie) {
+    const index = kategorien.indexOf(kategorie);
+    hauptwert = index >= 0 ? karte.werte[index] : '?';
+    hauptlabel = kategorie;
+  } else {
+    hauptwert = karte.gesamtstaerke;
+    hauptlabel = 'GESAMT';
+  }
   return `
     <div class="hand-karte ${typKlasse}" data-name="${karte.name}">
       <span class="typ-tag ${typKlasse}">${karte.typSymbol}</span>
       <div class="hand-karte-name">${karte.name}</div>
-      <div class="hand-karte-wert">${wert}</div>
-      <div class="hand-karte-label">${kategorie}</div>
+      <div class="hand-karte-wert">${hauptwert}</div>
+      <div class="hand-karte-label">${hauptlabel}</div>
     </div>`;
 }
 
 socket.on('waehleAntwortkarte', ({ kategorie, kategorien, hand }) => {
   KATEGORIEN_ANZEIGE = kategorien;
   statusZeile.textContent = `Kategorie: ${kategorie} - waehle deine Antwortkarte`;
+  eigeneHandBereich.classList.add('versteckt');
   eigeneKarteBereich.classList.add('versteckt');
   ultimateBereich.classList.add('versteckt');
   ergebnisBereich.classList.add('versteckt');
@@ -368,6 +431,7 @@ document.getElementById('btn-ultimate-nein').addEventListener('click', () => {
 // ---------- Rundenergebnis ----------
 
 socket.on('rundenErgebnis', (ergebnis) => {
+  eigeneHandBereich.classList.add('versteckt');
   eigeneKarteBereich.classList.add('versteckt');
   antwortkarteBereich.classList.add('versteckt');
   ultimateBereich.classList.add('versteckt');
@@ -418,6 +482,7 @@ socket.on('rundenErgebnis', (ergebnis) => {
 
   letzteStaende = ergebnis.staende;
   renderScoreLeiste(letzteStaende, null);
+  renderGegnerHaende(letzteStaende);
   document.getElementById('runden-anzeige').textContent = `RUNDE ${ergebnis.runde} / 15`;
 });
 

@@ -375,6 +375,54 @@ input[type="text"]:focus {
   background: var(--held);
 }
 
+.gewonnen-badge {
+  font-size: 0.68rem;
+  color: var(--gold-hell);
+  opacity: 0.85;
+}
+
+/* ---------- Gegner-Haende: verdeckte Kartenrueckseiten ---------- */
+
+.gegner-haende {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px;
+  width: 100%;
+}
+
+.gegner-hand-gruppe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.gegner-hand-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.gegner-hand-reihe {
+  display: flex;
+}
+
+.karten-rueckseite {
+  width: 20px;
+  height: 28px;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(135deg, #1a1830, #1a1830 3px, #241f40 3px, #241f40 6px);
+  border: 1px solid var(--gold);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  margin-left: -10px;
+}
+
+.gegner-hand-reihe .karten-rueckseite:first-child {
+  margin-left: 0;
+}
+
 .runden-anzeige {
   font-family: var(--font-display);
   letter-spacing: 0.15em;

@@ -22,11 +22,16 @@ Bei mehr als 2 Spielern spielen alle noch aktiven Spieler jede Runde gleichzeiti
 bei echtem Gleichstand (kein eindeutiger Schurke an der Spitze) wandern alle Karten dieser
 Runde in den Pot, die naechste entschiedene Runde gewinnt alles.
 
-**Antwortkarte frei waehlen:** Nur der aktive Spieler, der die Kategorie vorgibt, zieht blind
-seine oberste Karte (wie bei einem klassischen Quartett). Alle anderen sehen danach die
-Kategorie und duerfen sich frei die staerkste (oder taktisch beste) Karte aus ihrer kompletten
-restlichen Hand aussuchen - jede Hand-Karte zeigt sofort ihren Wert in der aktuellen Kategorie.
-Der Bot waehlt dabei automatisch seine staerkste Karte fuer die jeweilige Kategorie.
+**Hand-Modell (UNO-artig):** Jeder Spieler haelt genau 5 Karten in der Hand, der Rest liegt
+verdeckt im eigenen Nachziehstapel. Sowohl der aktive Spieler (Karte waehlen -> Kategorie
+dafuer waehlen) als auch alle Antwortspieler waehlen frei aus ihrer eigenen 5-Karten-Hand -
+jede Hand-Karte zeigt sofort ihren Wert in der aktuellen Kategorie (oder die Gesamtstaerke,
+solange die Kategorie noch nicht feststeht). Nach jeder gespielten Karte wird sofort eine neue
+aus dem eigenen Nachziehstapel nachgezogen, die Hand bleibt also immer bei 5. Gewonnene Karten
+wandern auf einen separaten Gewinn-Stapel (🏆-Zaehler) und werden NICHT zurueck in Hand oder
+Nachziehstapel gemischt. Die Haende der anderen Spieler sind als verdeckte Kartenrueckseiten
+sichtbar (man sieht, wie viele Karten sie haben, nicht welche). Der Bot waehlt automatisch die
+Karte+Kategorie-Kombination mit dem hoechsten Wert fuer sich selbst.
 
 **Power-Grid-Skala:** 1-10 statt der urspruenglichen 1-7 (feinere Abstufung zwischen den
 Charakteren). Team-Werte koennen durch "hoechster Wert + 1 pro weiterem Mitglied" deutlich
@@ -88,8 +93,8 @@ Verbinden ca. 30-60 Sekunden zum Aufwachen - danach laeuft er normal.)
 | 15 Runden, groesserer Stapel gewinnt | `Spiel.istVorbei()/gewinner()` | gleich | identisch |
 | Gegnerkarte bis zur Aufloesung verdeckt | n/a (Konsole zeigt lokal eh beide) | Server sendet nur die eigene Karte | Web ist hier sogar fairer |
 | 44 Charaktere | `Heldendaten.java` | `heldendaten.js` | gleiche Charaktere, Werte auf 1-10 umgerechnet |
-| Kategorie-Wahl: oberste Karte | gilt fuer beide Spieler | gilt nur fuer den aktiven Waehler | bewusste Web-Erweiterung, siehe oben |
-| Antwortkarte frei waehlen | nein (immer oberste Karte) | ja, aus der kompletten Hand | bewusste Web-Erweiterung |
+| Kategorie-Wahl: oberste Karte | gilt fuer beide Spieler (fester Stapel) | jeder waehlt frei aus seiner 5er-Hand | bewusste Web-Erweiterung, siehe oben |
+| Gewonnene Karten zurueck in den Stapel | ja (sofort wieder im Spiel) | nein, eigener Gewinn-Stapel | bewusste Web-Erweiterung |
 
 Die Server-Datei validiert Kategorien und Spielzustand genauso wie die Java-Klassen
 (ungueltige Kategorie oder zweites Ultimate wirft einen Fehler, der sauber als `fehler`-Event

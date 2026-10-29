@@ -5,7 +5,7 @@ const { Server } = require('socket.io');
 
 const { KATEGORIEN, kategorieIndex } = require('./karte');
 const { alleHelden } = require('./heldendaten');
-const { Spiel, SpielerZustand } = require('./spiel');
+const { Spiel, SpielerZustand, HAND_GROESSE } = require('./spiel');
 
 const app = express();
 app.use(express.static(path.join(__dirname, '..', 'docs')));
@@ -65,10 +65,26 @@ function besteKategorieFuer(karte) {
   return beste;
 }
 
-function botWaehltAntwortkarte(stapel, kategorie) {
-  let beste = stapel[0];
+function botWaehltKarteUndKategorie(hand) {
+  let besteKarte = hand[0];
+  let besteKategorie = besteKategorieFuer(besteKarte);
+  let bestWert = besteKarte.wert(besteKategorie);
+  for (const karte of hand) {
+    const kategorie = besteKategorieFuer(karte);
+    const wert = karte.wert(kategorie);
+    if (wert > bestWert) {
+      bestWert = wert;
+      besteKarte = karte;
+      besteKategorie = kategorie;
+    }
+  }
+  return { karte: besteKarte, kategorie: besteKategorie };
+}
+
+function botWaehltAntwortkarte(hand, kategorie) {
+  let beste = hand[0];
   let bestWert = beste.wert(kategorie);
-  for (const karte of stapel) {
+  for (const karte of hand) {
     const wert = karte.wert(kategorie);
     if (wert > bestWert) {
       bestWert = wert;
@@ -102,26 +118,32 @@ function sendeAnAlle(raum, ereignis, daten) {
 }
 
 function staende(raum) {
-  return raum.spieler.map((s) => ({ name: s.zustand.name, anzahl: s.zustand.anzahlKarten() }));
+  return raum.spieler.map((s) => ({
+    name: s.zustand.name,
+    anzahl: s.zustand.gesamtAnzahlKarten(),
+    handAnzahl: s.zustand.anzahlHand(),
+    gewonnenAnzahl: s.zustand.anzahlGewonnen(),
+  }));
 }
 
 function naechsterAktiverIndex(raum, von) {
   const n = raum.spieler.length;
   for (let schritt = 1; schritt <= n; schritt += 1) {
     const kandidat = (von + schritt) % n;
-    if (raum.spieler[kandidat].zustand.hatKarten()) return kandidat;
+    if (raum.spieler[kandidat].zustand.hatSpielbareKarten()) return kandidat;
   }
   return von;
 }
 
+// ---------- Schritt 1: aktiver Spieler waehlt eine Karte aus seiner Hand ----------
+
 function naechsterZug(raum) {
-  raum.phase = 'warteAufKategorie';
+  raum.phase = 'warteAufEigeneKarte';
   raum.kartenAuswahl = new Map();
   const aktiv = raum.spieler[raum.aktiverIndex];
-  sendeAnSitz(raum, raum.aktiverIndex, 'deinZug', {
-    eigeneKarte: kartenDaten(aktiv.zustand.obersteKarte()),
-    kategorien: KATEGORIEN,
-    index: raum.aktiverIndex,
+
+  sendeAnSitz(raum, raum.aktiverIndex, 'waehleEigeneKarte', {
+    hand: aktiv.zustand.hand.map(kartenDaten),
   });
   raum.spieler.forEach((_, i) => {
     if (i !== raum.aktiverIndex) {
@@ -131,37 +153,58 @@ function naechsterZug(raum) {
 
   if (aktiv.zustand.istBot) {
     setTimeout(() => {
-      if (raum.phase !== 'warteAufKategorie') return;
-      const kategorie = besteKategorieFuer(aktiv.zustand.obersteKarte());
-      waehleKategorie(raum, kategorie);
+      if (raum.phase !== 'warteAufEigeneKarte') return;
+      const { karte, kategorie } = botWaehltKarteUndKategorie(aktiv.zustand.hand);
+      waehleEigeneKarte(raum, karte.name);
+      // Kleine zusaetzliche Pause, damit die Kategoriewahl des Bots nicht
+      // im selben Tick wie die Kartenwahl passiert.
+      setTimeout(() => {
+        if (raum.phase !== 'warteAufKategorie') return;
+        waehleKategorie(raum, kategorie);
+      }, BOT_DENKPAUSE_MS);
     }, BOT_DENKPAUSE_MS);
   }
 }
 
-function waehleKategorie(raum, kategorie) {
-  raum.ausgewaehlteKategorie = kategorie;
+function waehleEigeneKarte(raum, kartenName) {
+  if (raum.phase !== 'warteAufEigeneKarte') return;
   const aktiv = raum.spieler[raum.aktiverIndex];
-  const eigeneKarte = aktiv.zustand.ziehKarte(); // jetzt endgueltig aus der Hand entfernt
-  raum.kartenAuswahl.set(raum.aktiverIndex, eigeneKarte);
+  const karte = aktiv.zustand.entferneAusHand(kartenName);
+  if (!karte) return;
+  raum.aktiveKarte = karte;
+  raum.phase = 'warteAufKategorie';
+  sendeAnSitz(raum, raum.aktiverIndex, 'waehleKategorieFuerKarte', {
+    karte: kartenDaten(karte),
+    kategorien: KATEGORIEN,
+  });
+}
+
+// ---------- Schritt 2: aktiver Spieler waehlt die Kategorie fuer diese Karte ----------
+
+function waehleKategorie(raum, kategorie) {
+  if (raum.phase !== 'warteAufKategorie') return;
+  raum.ausgewaehlteKategorie = kategorie;
+  raum.kartenAuswahl.set(raum.aktiverIndex, raum.aktiveKarte);
+  raum.aktiveKarte = null;
 
   // Alle anderen aktiven Spieler duerfen jetzt frei aus ihrer Hand antworten.
   raum.phase = 'warteAufAntwortkarten';
   raum.antwortenAusstehend = new Set();
 
   raum.spieler.forEach((s, i) => {
-    if (i === raum.aktiverIndex || !s.zustand.hatKarten()) return;
+    if (i === raum.aktiverIndex || !s.zustand.hatSpielbareKarten()) return;
     raum.antwortenAusstehend.add(i);
     if (s.zustand.istBot) {
       setTimeout(() => {
         if (raum.phase !== 'warteAufAntwortkarten' || !raum.antwortenAusstehend.has(i)) return;
-        const karte = botWaehltAntwortkarte(s.zustand.stapel, kategorie);
+        const karte = botWaehltAntwortkarte(s.zustand.hand, kategorie);
         waehleAntwortkarte(raum, i, karte.name);
       }, BOT_DENKPAUSE_MS);
     } else {
       sendeAnSitz(raum, i, 'waehleAntwortkarte', {
         kategorie,
         kategorien: KATEGORIEN,
-        hand: s.zustand.stapel.map(kartenDaten),
+        hand: s.zustand.hand.map(kartenDaten),
       });
     }
   });
@@ -173,8 +216,8 @@ function waehleKategorie(raum, kategorie) {
 
 function waehleAntwortkarte(raum, index, kartenName) {
   if (raum.phase !== 'warteAufAntwortkarten' || !raum.antwortenAusstehend.has(index)) return;
-  const karte = raum.spieler[index].zustand.entferneKarte(kartenName);
-  if (!karte) return; // ungueltiger/veralteter Name - ignorieren
+  const karte = raum.spieler[index].zustand.entferneAusHand(kartenName);
+  if (!karte) return;
   raum.kartenAuswahl.set(index, karte);
   raum.antwortenAusstehend.delete(index);
 
@@ -249,7 +292,7 @@ function versucheRundeAufzuloesen(raum) {
       const gewinnerIndex = raum.spiel.gewinnerIndex();
       sendeAnAlle(raum, 'spielVorbei', {
         gewinnerIndex,
-        rangliste: raum.spiel.rangliste().map((s) => ({ name: s.name, anzahl: s.anzahlKarten() })),
+        rangliste: raum.spiel.rangliste().map((s) => ({ name: s.name, anzahl: s.gesamtAnzahlKarten() })),
       });
     } else {
       naechsterZug(raum);
@@ -260,8 +303,9 @@ function versucheRundeAufzuloesen(raum) {
 function starteSpiel(raum) {
   const deck = mischen(STAMMKARTEN);
   deck.forEach((karte, i) => {
-    raum.spieler[i % raum.spieler.length].zustand.stapel.push(karte);
+    raum.spieler[i % raum.spieler.length].zustand.nachziehstapel.push(karte);
   });
+  raum.spieler.forEach((s) => s.zustand.ziehNach());
 
   raum.spiel = new Spiel(raum.spieler.map((s) => s.zustand));
   raum.aktiverIndex = 0;
@@ -272,8 +316,9 @@ function starteSpiel(raum) {
       spieler: raum.spieler.map((s) => ({
         name: s.zustand.name,
         istBot: s.zustand.istBot,
-        anzahl: s.zustand.anzahlKarten(),
       })),
+      staende: staende(raum),
+      handGroesse: HAND_GROESSE,
     });
   });
 
@@ -294,6 +339,7 @@ io.on('connection', (socket) => {
       phase: 'lobby',
       aktiverIndex: 0,
       ausgewaehlteKategorie: null,
+      aktiveKarte: null,
       kartenAuswahl: new Map(),
       antwortenAusstehend: new Set(),
       antworten: null,
@@ -315,6 +361,7 @@ io.on('connection', (socket) => {
       phase: 'lobby',
       aktiverIndex: 0,
       ausgewaehlteKategorie: null,
+      aktiveKarte: null,
       kartenAuswahl: new Map(),
       antwortenAusstehend: new Set(),
       antworten: null,
@@ -369,6 +416,12 @@ io.on('connection', (socket) => {
       return;
     }
     starteSpiel(raum);
+  });
+
+  socket.on('eigeneKarteWaehlen', ({ kartenName } = {}) => {
+    const raum = raeume.get(socket.data.raumCode);
+    if (!raum || raum.phase !== 'warteAufEigeneKarte' || socket.data.sitz !== raum.aktiverIndex) return;
+    waehleEigeneKarte(raum, kartenName);
   });
 
   socket.on('kategorieWaehlen', ({ kategorie } = {}) => {
