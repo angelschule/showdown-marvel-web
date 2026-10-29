@@ -201,68 +201,32 @@ const TYP_ICONS = {
   TEAM: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="22" r="9"/><circle cx="30" cy="22" r="9"/></svg>',
 };
 
-function kartenHtml(karte, besitzerLabel, kategorie) {
-  const typKlasse = karte.typSymbol.toLowerCase();
-  const balken = karte.werte
-    .map((wert, i) => {
-      const kategorieName = KATEGORIEN_ANZEIGE[i] || '';
-      const prozent = Math.round((wert / MAX_WERT) * 100);
-      const istAktuelleKategorie = kategorieName === kategorie;
-      return `
-        <div class="stat-zeile${istAktuelleKategorie ? ' aktive-kategorie' : ''}">
-          <span>${kategorieName}</span>
-          <div class="stat-balken"><div class="stat-balken-fuellung" data-ziel="${prozent}"></div></div>
-          <span>${wert}</span>
-        </div>`;
-    })
-    .join('');
-
-  const platzhalterInhalt = kategorie
-    ? `<div class="kategorie-label">${kategorie}</div><div class="kategorie-icon">${KATEGORIE_ICONS[kategorie] || ''}</div>`
-    : `<div class="kategorie-icon typ-icon">${TYP_ICONS[karte.typSymbol] || ''}</div>`;
-
-  return `
-    <div class="bild-rahmen">
-      <img class="karten-bild" src="images/${karte.bildSchluessel}.jpg"
-           data-schluessel="${karte.bildSchluessel}" data-endung="jpg"
-           onerror="bildFallback(this)"
-           alt="" />
-      <div class="bild-platzhalter" aria-hidden="true">${platzhalterInhalt}</div>
-      <span class="typ-tag ${typKlasse}">${karte.typSymbol}</span>
-      ${besitzerLabel ? `<div class="besitzer">${besitzerLabel}</div>` : ''}
-    </div>
-    <div class="karte-info">
-      <div class="name">${karte.name}</div>
-      ${balken}
-      <div class="gesamtstaerke-zeile">GESAMT ${karte.gesamtstaerke}</div>
-    </div>
-  `;
-}
-
-// Kompakte Darstellung ohne Textbeschriftung: nur die 6 Kategorie-Icons in
-// derselben Reihenfolge wie im Auswahl-Overlay, jedes mit seinem Wert darunter.
-// Das Bild traegt zusaetzlich das (zunaechst versteckte) Kategorie-Overlay -
-// kein separates Feld mehr unter der Karte.
-function kartenHtmlIconReihe(karte) {
-  const reihe = karte.werte
+// Einheitliches Attribut-Raster: 3 Spalten x 2 Reihen, pro Zelle Name (klein,
+// oben), Icon und Wert darunter. interaktiv=true macht die Zellen klickbar
+// (Kategorie-Wahl), sonst ist es eine reine Anzeige (z. B. im Rundenergebnis,
+// mit hervorgehobener aktueller Kategorie).
+function attributRasterHtml(karte, { interaktiv = false, aktiveKategorie = null } = {}) {
+  const zellen = karte.werte
     .map((wert, i) => {
       const kategorie = KATEGORIEN_ANZEIGE[i] || '';
+      const istAktiv = kategorie === aktiveKategorie;
+      const tag = interaktiv ? 'button' : 'div';
+      const klasse = 'attribut-zelle'
+        + (interaktiv ? ' attribut-zelle-klickbar' : '')
+        + (istAktiv ? ' aktive-kategorie' : '');
+      const datenAttr = interaktiv ? ` data-kategorie="${kategorie}"` : '';
       return `
-        <div class="icon-stat" title="${kategorie}">
-          <div class="icon-stat-icon">${KATEGORIE_ICONS[kategorie] || ''}</div>
-          <div class="icon-stat-wert">${wert}</div>
-        </div>`;
+        <${tag} class="${klasse}"${datenAttr}>
+          <span class="attribut-label">${kategorie}</span>
+          <span class="attribut-icon">${KATEGORIE_ICONS[kategorie] || ''}</span>
+          <span class="attribut-wert">${wert}</span>
+        </${tag}>`;
     })
     .join('');
+  return `<div class="attribut-raster">${zellen}</div>`;
+}
 
-  const overlayButtons = KATEGORIEN_ANZEIGE
-    .map((kategorie) => `
-      <button class="kategorie-overlay-btn" data-kategorie="${kategorie}">
-        <span class="kategorie-overlay-icon">${KATEGORIE_ICONS[kategorie] || ''}</span>
-        <span class="kategorie-overlay-label">${kategorie}</span>
-      </button>`)
-    .join('');
-
+function bildRahmenHtml(karte, besitzerLabel) {
   return `
     <div class="bild-rahmen">
       <img class="karten-bild" src="images/${karte.bildSchluessel}.jpg"
@@ -271,43 +235,42 @@ function kartenHtmlIconReihe(karte) {
            alt="" />
       <div class="bild-platzhalter" aria-hidden="true"><div class="kategorie-icon typ-icon">${TYP_ICONS[karte.typSymbol] || ''}</div></div>
       <span class="typ-tag ${karte.typSymbol.toLowerCase()}">${karte.typSymbol}</span>
-      <div class="klick-hinweis">Klicken zum Waehlen</div>
-      <div class="kategorie-overlay versteckt">${overlayButtons}</div>
-    </div>
+      ${besitzerLabel ? `<div class="besitzer">${besitzerLabel}</div>` : ''}
+    </div>`;
+}
+
+// Statische Anzeige (Rundenergebnis): Bild bleibt komplett sichtbar, darunter
+// das Attribut-Raster mit hervorgehobener Kategorie dieser Runde.
+function kartenHtml(karte, besitzerLabel, kategorie) {
+  return `
+    ${bildRahmenHtml(karte, besitzerLabel)}
     <div class="karte-info">
       <div class="name">${karte.name}</div>
-      <div class="icon-stat-reihe">${reihe}</div>
+      ${attributRasterHtml(karte, { interaktiv: false, aktiveKategorie: kategorie })}
       <div class="gesamtstaerke-zeile">GESAMT ${karte.gesamtstaerke}</div>
     </div>
   `;
 }
 
-// Macht die Karte selbst zum Kategorie-Waehler: Hover hebt sie hervor, ein
-// Klick blendet das Icon-Raster (3 pro Reihe) direkt ueber dem Bild ein.
-function aktiviereKategorieOverlay(karteEl) {
-  const overlay = karteEl.querySelector('.kategorie-overlay');
-  const hinweis = karteEl.querySelector('.klick-hinweis');
-
-  karteEl.addEventListener('click', (e) => {
-    if (e.target.closest('.kategorie-overlay-btn')) return;
-    overlay.classList.toggle('versteckt');
-    hinweis.classList.toggle('versteckt');
-  });
-
-  overlay.querySelectorAll('.kategorie-overlay-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const kategorie = btn.dataset.kategorie;
-      socket.emit('kategorieWaehlen', { kategorie });
-      statusZeile.textContent = `Kategorie gewaehlt: ${kategorie} - warte auf Aufloesung...`;
-    });
-  });
+// Interaktive Anzeige (eigene Kategoriewahl): Bild bleibt sichtbar, das
+// Attribut-Raster darunter ist direkt anklickbar - kein Overlay auf dem Bild.
+function kartenHtmlIconReihe(karte) {
+  return `
+    ${bildRahmenHtml(karte, null)}
+    <div class="karte-info">
+      <div class="name">${karte.name}</div>
+      ${attributRasterHtml(karte, { interaktiv: true })}
+      <div class="gesamtstaerke-zeile">GESAMT ${karte.gesamtstaerke}</div>
+    </div>
+  `;
 }
 
-function animiereBalken(scope) {
-  requestAnimationFrame(() => {
-    scope.querySelectorAll('.stat-balken-fuellung[data-ziel]').forEach((el) => {
-      el.style.width = `${el.dataset.ziel}%`;
+function aktiviereAttributKlicks(karteEl) {
+  karteEl.querySelectorAll('.attribut-zelle-klickbar').forEach((zelle) => {
+    zelle.addEventListener('click', () => {
+      const kategorie = zelle.dataset.kategorie;
+      socket.emit('kategorieWaehlen', { kategorie });
+      statusZeile.textContent = `Kategorie gewaehlt: ${kategorie} - warte auf Aufloesung...`;
     });
   });
 }
@@ -346,10 +309,7 @@ socket.on('waehleKategorieFuerKarte', ({ karte, kategorien }) => {
   const karteEl = document.getElementById('eigene-karte');
   karteEl.innerHTML = kartenHtmlIconReihe(karte);
   karteEl.className = `spielkarte kompakt ${karte.typSymbol.toLowerCase()}`;
-  aktiviereKategorieOverlay(karteEl);
-  // Die Kartenwahl ist bereits getroffen - das Kategorie-Raster steht sofort offen.
-  karteEl.querySelector('.kategorie-overlay').classList.remove('versteckt');
-  karteEl.querySelector('.klick-hinweis').classList.add('versteckt');
+  aktiviereAttributKlicks(karteEl);
 });
 
 socket.on('wartenAufSpieler', ({ name, index }) => {
@@ -454,7 +414,6 @@ socket.on('rundenErgebnis', (ergebnis) => {
     div.className = `spielkarte ${e.karte.typSymbol.toLowerCase()}` + (e.spielerIndex === ergebnis.gewinnerIndex ? ' gewonnen' : '');
     div.innerHTML = kartenHtml(e.karte, label, ergebnis.kategorie);
     raster.appendChild(div);
-    animiereBalken(div);
   });
 
   const potAnzeige = document.getElementById('pot-anzeige');

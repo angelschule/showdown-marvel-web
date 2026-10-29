@@ -134,6 +134,32 @@ body {
   align-items: stretch;
 }
 
+/* ---------- Pokertisch: Spielbildschirm ---------- */
+
+#spiel-bildschirm {
+  position: relative;
+  padding: 26px 18px 36px;
+  border-radius: 28px;
+  border: 10px solid #3b2415;
+  background:
+    radial-gradient(ellipse at 50% 12%, rgba(255, 255, 255, 0.07), transparent 50%),
+    radial-gradient(ellipse at 50% 105%, rgba(0, 0, 0, 0.6), transparent 60%),
+    radial-gradient(ellipse at 50% 50%, #123b29 0%, #0a2419 55%, #061611 100%);
+  box-shadow:
+    inset 0 0 50px rgba(0, 0, 0, 0.65),
+    inset 0 0 130px rgba(0, 0, 0, 0.4),
+    0 30px 70px rgba(0, 0, 0, 0.6);
+}
+
+#spiel-bildschirm::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(212, 175, 100, 0.14);
+  pointer-events: none;
+}
+
 .panel {
   position: relative;
   background: linear-gradient(165deg, var(--panel), var(--bg2));
@@ -454,12 +480,13 @@ input[type="text"]:focus {
   border-radius: 14px;
   width: 100%;
   max-width: 320px;
-  aspect-ratio: 2 / 3;
+  height: auto;
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  transform: perspective(900px) rotateX(2deg);
+  box-shadow: 0 30px 50px -10px rgba(0, 0, 0, 0.7), 0 8px 16px rgba(0, 0, 0, 0.5);
   animation: karte-rein 0.4s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
@@ -484,10 +511,14 @@ input[type="text"]:focus {
 .bild-rahmen {
   position: relative;
   width: 100%;
-  height: 58%;
+  height: 220px;
   flex-shrink: 0;
   background: #0b0a0f;
   overflow: hidden;
+}
+
+.spielkarte.kompakt .bild-rahmen {
+  height: 195px;
 }
 
 .karten-bild {
@@ -601,44 +632,10 @@ input[type="text"]:focus {
 .typ-tag.schurke { color: var(--schurke); }
 .typ-tag.team { color: var(--team); }
 
-.stat-zeile {
-  display: grid;
-  grid-template-columns: 1fr 2fr auto;
-  gap: 8px;
-  align-items: center;
-  font-size: 0.68rem;
-  margin-bottom: 3px;
-  color: var(--muted);
-}
-
-.stat-zeile.aktive-kategorie {
-  color: var(--gold-hell);
-  font-weight: 700;
-}
-
-.stat-zeile.aktive-kategorie .stat-balken-fuellung {
-  background: linear-gradient(90deg, var(--gold), var(--gold-hell));
-  box-shadow: 0 0 8px rgba(212, 175, 100, 0.5);
-}
-
-.stat-balken {
-  background: #0b0a0f;
-  border-radius: 3px;
-  overflow: hidden;
-  height: 6px;
-  border: 1px solid var(--panel-rand);
-}
-
-.stat-balken-fuellung {
-  height: 100%;
-  background: linear-gradient(90deg, #8a6a2f, var(--gold-hell));
-  width: 0%;
-  transition: width 0.7s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
 .gesamtstaerke-zeile {
-  margin-top: auto;
+  margin-top: 8px;
   padding-top: 6px;
+  border-top: 1px solid var(--panel-rand);
   text-align: right;
   color: var(--gold);
   font-family: var(--font-display);
@@ -650,130 +647,83 @@ input[type="text"]:focus {
 
 .spielkarte.kompakt {
   max-width: 280px;
-  cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-.spielkarte.kompakt:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.6), 0 0 24px rgba(212, 175, 100, 0.25);
-}
+/* ---------- Attribut-Raster: Bild bleibt immer sichtbar, darunter 3x2 ---------- */
 
-.klick-hinweis {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 8px;
-  text-align: center;
-  font-family: var(--font-display);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  color: var(--gold-hell);
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
-  pointer-events: none;
-  transition: opacity 0.15s ease;
-}
-
-.kategorie-overlay {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  top: 38%; /* oberer Teil des Bildes (Gesicht) bleibt sichtbar */
-  z-index: 2;
-  background: linear-gradient(180deg, rgba(5, 4, 8, 0.2), rgba(5, 4, 8, 0.92) 25%);
+.attribut-raster {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(2, 1fr);
-  gap: 5px;
-  padding: 8px;
-  animation: modal-box-rein 0.15s ease-out;
+  gap: 6px;
+  margin: 6px 0;
 }
 
-@keyframes modal-box-rein {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.kategorie-overlay-btn {
+.attribut-zelle {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
-  overflow: hidden;
-  background: rgba(14, 12, 28, 0.9);
+  background: rgba(14, 12, 28, 0.65);
   border: 1px solid var(--panel-rand);
   border-radius: 6px;
-  color: var(--text);
+  padding: 5px 3px;
   font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 0.64rem;
-  line-height: 1.15;
-  text-align: center;
+  color: var(--text);
+}
+
+.attribut-zelle-klickbar {
   cursor: pointer;
-  padding: 3px;
   transition: all 0.12s ease;
 }
 
-.kategorie-overlay-label {
+.attribut-zelle-klickbar:hover {
+  border-color: var(--gold);
+  background: rgba(212, 175, 100, 0.12);
+  transform: translateY(-2px);
+}
+
+.attribut-zelle.aktive-kategorie {
+  border-color: var(--gold);
+  background: rgba(212, 175, 100, 0.14);
+  box-shadow: 0 0 10px rgba(212, 175, 100, 0.35);
+}
+
+.attribut-label {
+  font-size: 0.56rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
   overflow-wrap: normal;
   word-break: normal;
   hyphens: auto;
   max-width: 100%;
+  text-align: center;
+  line-height: 1.1;
 }
 
-.kategorie-overlay-btn:hover {
-  border-color: var(--gold);
-  color: var(--gold-hell);
-  background: rgba(212, 175, 100, 0.12);
-  transform: scale(1.04);
-}
+.attribut-zelle.aktive-kategorie .attribut-label { color: var(--gold-hell); }
 
-.kategorie-overlay-icon {
-  width: 22px;
-  height: 22px;
+.attribut-icon {
+  width: 20px;
+  height: 20px;
   color: var(--gold);
 }
 
-.kategorie-overlay-icon svg {
+.attribut-icon svg {
   width: 100%;
   height: 100%;
 }
 
-/* ---------- Eigene Karte: Icon-Reihe statt Textbalken ---------- */
-
-.icon-stat-reihe {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 4px;
-  margin: 4px 0;
-}
-
-.icon-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.icon-stat-icon {
-  width: 22px;
-  height: 22px;
-  color: var(--gold);
-}
-
-.icon-stat-icon svg {
-  width: 100%;
-  height: 100%;
-}
-
-.icon-stat-wert {
+.attribut-wert {
   font-family: var(--font-display);
   font-size: 0.95rem;
   color: var(--text);
 }
+
+.attribut-zelle.aktive-kategorie .attribut-wert { color: var(--gold-hell); font-weight: 700; }
 
 /* ---------- Antwortkarten-Hand (Faecher) ---------- */
 
@@ -801,6 +751,8 @@ input[type="text"]:focus {
   cursor: pointer;
   flex: 0 0 110px;
   margin-left: -38px;
+  transform: perspective(900px) rotateX(3deg);
+  box-shadow: 0 16px 28px -8px rgba(0, 0, 0, 0.65);
   transition: transform 0.18s ease, border-color 0.15s ease, box-shadow 0.15s ease, z-index 0s;
 }
 
