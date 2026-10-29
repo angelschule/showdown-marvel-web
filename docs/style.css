@@ -38,6 +38,17 @@ body {
   padding: 24px 16px 60px;
   position: relative;
   overflow-x: hidden;
+  transition: padding-top 0.2s ease;
+}
+
+/* Waehrend des Spiels verschwindet der Titel - mehr Platz fuer den Tisch,
+   fuehlt sich dadurch eher nach Vollbild an. */
+body.im-spiel {
+  padding-top: 10px;
+}
+
+body.im-spiel .kopfzeile {
+  display: none;
 }
 
 /* Kino-Vignette: dunklere Raender, heller in der Mitte - statt Comic-Halbton */
@@ -134,6 +145,77 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   align-items: stretch;
+}
+
+/* ---------- Ladebildschirm ---------- */
+
+#lade-bildschirm {
+  padding: 40px 0 10px;
+}
+
+.lade-artwork {
+  width: 220px;
+  aspect-ratio: 2 / 3;
+  border-radius: 14px;
+  background: linear-gradient(165deg, var(--panel), #08070a);
+  border: 1px solid var(--panel-rand);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Schimmer deutet an, dass hier spaeter ein echtes Artwork hinkommt */
+.lade-artwork::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(201, 163, 95, 0.12) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: lade-schimmer 2.4s ease-in-out infinite;
+}
+
+@keyframes lade-schimmer {
+  0% { background-position: 150% 0; }
+  100% { background-position: -50% 0; }
+}
+
+.lade-artwork-platzhalter {
+  width: 72px;
+  height: 72px;
+  color: var(--gold);
+  opacity: 0.4;
+}
+
+.lade-artwork-platzhalter svg { width: 100%; height: 100%; }
+
+.lade-text {
+  font-family: var(--font-display);
+  letter-spacing: 0.1em;
+  color: var(--text);
+  font-size: 1.1rem;
+}
+
+.lade-punkte span {
+  animation: lade-punkt-blink 1.4s infinite;
+  opacity: 0;
+}
+
+.lade-punkte span:nth-child(2) { animation-delay: 0.2s; }
+.lade-punkte span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes lade-punkt-blink {
+  0%, 80%, 100% { opacity: 0; }
+  40% { opacity: 1; }
+}
+
+.lade-hinweis {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+  max-width: 320px;
 }
 
 /* ---------- Pokertisch: Spielbildschirm ---------- */
@@ -1255,6 +1337,154 @@ input[type="text"]:focus {
   box-shadow: 0 0 18px rgba(212, 175, 100, 0.3);
 }
 
+/* ---------- Chat: wie am selben Tisch mit dem Mitspieler reden ---------- */
+
+.chat-widget {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.chat-toggle {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(201, 163, 95, 0.4);
+  background: linear-gradient(165deg, var(--panel), #08070a);
+  color: var(--gold-hell);
+  font-size: 1.3rem;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--schurke);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-fenster {
+  width: 280px;
+  height: 340px;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(165deg, var(--panel), #08070a);
+  border: 1px solid rgba(201, 163, 95, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.chat-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+  color: var(--gold-hell);
+  border-bottom: 1px solid var(--panel-rand);
+  flex-shrink: 0;
+}
+
+.chat-schliessen {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chat-schliessen:hover { color: var(--gold-hell); }
+
+.chat-nachrichten {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chat-nachricht {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.chat-absender {
+  font-family: var(--font-display);
+  letter-spacing: 0.03em;
+  color: var(--held);
+  flex-shrink: 0;
+}
+
+.chat-nachricht.eigene .chat-absender { color: var(--gold-hell); }
+
+.chat-text { color: var(--text); }
+
+.chat-form {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid var(--panel-rand);
+  flex-shrink: 0;
+}
+
+.chat-form input {
+  flex: 1;
+  min-width: 0;
+  background: #0b0a0f;
+  border: 1px solid var(--panel-rand);
+  border-radius: 6px;
+  padding: 7px 9px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+}
+
+.chat-form input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+.chat-senden {
+  background: var(--gold);
+  color: #1a1408;
+  border: none;
+  border-radius: 6px;
+  padding: 0 12px;
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 480px) {
@@ -1264,6 +1494,8 @@ input[type="text"]:focus {
   .duell-zeile { flex-direction: column; }
   .hand-karte { flex-basis: 108px; max-width: 108px; margin-left: -36px; }
   .karten-rueckseite { width: 32px; height: 46px; margin-left: -16px; }
+  .chat-widget { right: 10px; bottom: 10px; }
+  .chat-fenster { width: calc(100vw - 20px); max-width: 320px; height: 300px; }
 }
 
 @media (hover: none) {

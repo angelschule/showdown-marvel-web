@@ -472,6 +472,22 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Chat: wie am selben Tisch sitzen - an alle im Raum, solange er existiert
+  // (Lobby, Spiel oder Ende), auch gegen einen Bot (der ihn einfach ignoriert).
+  socket.on('chatNachricht', ({ text } = {}) => {
+    const raum = raeume.get(socket.data.raumCode);
+    if (!raum) return;
+    const spieler = raum.spieler[socket.data.sitz];
+    if (!spieler) return;
+    const getrimmt = String(text || '').trim().slice(0, 200);
+    if (!getrimmt) return;
+    sendeAnAlle(raum, 'chatNachricht', {
+      spielerIndex: socket.data.sitz,
+      name: spieler.zustand.name,
+      text: getrimmt,
+    });
+  });
+
   // Vorschau der eigenen gewonnenen Karten - nur an den anfragenden Spieler.
   socket.on('gewonneneKartenAnfragen', () => {
     const raum = raeume.get(socket.data.raumCode);

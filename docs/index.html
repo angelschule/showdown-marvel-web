@@ -18,8 +18,22 @@
       <span class="unterzeile">MARVEL QUARTETT</span>
     </header>
 
+    <!-- Ladebildschirm: sichtbar bis die Verbindung zum Server steht (Render
+         kann beim ersten Verbinden 30-60s zum Aufwachen brauchen). Das Bild in
+         .lade-artwork ist bewusst ein Platzhalter - hier spaeter ein eigenes
+         Artwork (<img>) einsetzen. -->
+    <section id="lade-bildschirm" class="bildschirm">
+      <div class="lade-artwork">
+        <div class="lade-artwork-platzhalter" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M24 4 44 14v12c0 12-8.5 19.5-20 22C12.5 45.5 4 38 4 26V14Z" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+      <p class="lade-text">Verbinde mit dem Server<span class="lade-punkte"><span>.</span><span>.</span><span>.</span></span></p>
+      <p class="lade-hinweis">Kann beim ersten Verbinden bis zu 60 Sekunden dauern - der Server wacht gerade auf.</p>
+    </section>
+
     <!-- Startbildschirm -->
-    <section id="start-bildschirm" class="bildschirm">
+    <section id="start-bildschirm" class="bildschirm versteckt">
       <div class="panel panel-bot">
         <div class="panel-badge">SOLO</div>
         <h2>Gegen Bot spielen</h2>
@@ -139,6 +153,24 @@
       <ol id="ende-rangliste" class="rangliste"></ol>
       <button id="btn-neustart" class="btn btn-primaer">Neues Spiel</button>
     </section>
+
+    <!-- Kleines Chatfenster - wie am Pokertisch mit dem Mitspieler reden -->
+    <div id="chat-widget" class="chat-widget versteckt">
+      <div id="chat-fenster" class="chat-fenster versteckt">
+        <div class="chat-kopf">
+          <span>Chat</span>
+          <button id="chat-schliessen" class="chat-schliessen" aria-label="Chat schliessen">&times;</button>
+        </div>
+        <div id="chat-nachrichten" class="chat-nachrichten"></div>
+        <form id="chat-form" class="chat-form">
+          <input id="chat-eingabe" type="text" maxlength="200" placeholder="Nachricht..." autocomplete="off" />
+          <button type="submit" class="chat-senden">Senden</button>
+        </form>
+      </div>
+      <button id="chat-toggle" class="chat-toggle" aria-label="Chat oeffnen">
+        💬<span id="chat-badge" class="chat-badge versteckt">0</span>
+      </button>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>

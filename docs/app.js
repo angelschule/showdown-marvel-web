@@ -6,16 +6,29 @@ const SOCKET_URL = (location.hostname === 'localhost' || location.hostname === '
 const socket = io(SOCKET_URL);
 
 const bildschirme = {
+  lade: document.getElementById('lade-bildschirm'),
   start: document.getElementById('start-bildschirm'),
   lobby: document.getElementById('lobby-bildschirm'),
   spiel: document.getElementById('spiel-bildschirm'),
   ende: document.getElementById('ende-bildschirm'),
 };
 
+const chatWidget = document.getElementById('chat-widget');
+
 function zeigeBildschirm(name) {
   Object.values(bildschirme).forEach((el) => el.classList.add('versteckt'));
   bildschirme[name].classList.remove('versteckt');
+  // Waehrend des eigentlichen Spiels keinen Platz fuer den Titel verschwenden -
+  // soll sich moeglichst wie Vollbild anfuehlen.
+  document.body.classList.toggle('im-spiel', name === 'spiel');
+  // Das Chatfenster ("wie am selben Tisch sitzen") gibt es erst, sobald ein
+  // Raum existiert - nicht auf dem Lade- oder Startbildschirm.
+  chatWidget.classList.toggle('versteckt', name === 'lade' || name === 'start');
 }
+
+socket.on('connect', () => {
+  if (!bildschirme.lade.classList.contains('versteckt')) zeigeBildschirm('start');
+});
 
 function setzeFehler(text) {
   const istSpielAktiv = !bildschirme.spiel.classList.contains('versteckt');
@@ -590,4 +603,64 @@ socket.on('spielerVerbindungGetrennt', ({ name }) => {
   document.getElementById('ende-titel').textContent = `Verbindung zu ${name || 'einem Spieler'} verloren`;
   document.getElementById('ende-rangliste').innerHTML = '';
   zeigeBildschirm('ende');
+});
+
+// ---------- Chat: wie am selben Tisch sitzen ----------
+
+const chatFenster = document.getElementById('chat-fenster');
+const chatNachrichten = document.getElementById('chat-nachrichten');
+const chatBadge = document.getElementById('chat-badge');
+let chatUngelesen = 0;
+
+function chatOeffnen() {
+  chatFenster.classList.remove('versteckt');
+  chatUngelesen = 0;
+  chatBadge.classList.add('versteckt');
+  document.getElementById('chat-eingabe').focus();
+}
+
+document.getElementById('chat-toggle').addEventListener('click', () => {
+  if (chatFenster.classList.contains('versteckt')) {
+    chatOeffnen();
+  } else {
+    chatFenster.classList.add('versteckt');
+  }
+});
+
+document.getElementById('chat-schliessen').addEventListener('click', () => {
+  chatFenster.classList.add('versteckt');
+});
+
+document.getElementById('chat-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const eingabe = document.getElementById('chat-eingabe');
+  const text = eingabe.value.trim();
+  if (!text) return;
+  socket.emit('chatNachricht', { text });
+  eingabe.value = '';
+});
+
+// Nie innerHTML fuer Name/Text verwenden - beides kommt von Mitspielern.
+function chatNachrichtAnzeigen(name, text, eigene) {
+  const zeile = document.createElement('div');
+  zeile.className = 'chat-nachricht' + (eigene ? ' eigene' : '');
+  const absender = document.createElement('span');
+  absender.className = 'chat-absender';
+  absender.textContent = name;
+  const inhalt = document.createElement('span');
+  inhalt.className = 'chat-text';
+  inhalt.textContent = text;
+  zeile.appendChild(absender);
+  zeile.appendChild(inhalt);
+  chatNachrichten.appendChild(zeile);
+  chatNachrichten.scrollTop = chatNachrichten.scrollHeight;
+}
+
+socket.on('chatNachricht', ({ spielerIndex, name, text }) => {
+  chatNachrichtAnzeigen(name, text, spielerIndex === meinIndex);
+  if (chatFenster.classList.contains('versteckt')) {
+    chatUngelesen += 1;
+    chatBadge.textContent = chatUngelesen;
+    chatBadge.classList.remove('versteckt');
+  }
 });
