@@ -141,10 +141,17 @@ function renderScoreLeiste(staendeArray, aktiverIndex) {
   });
 }
 
-function stapelGrafikHtml(anzahl, { gewonnen = false, titel } = {}) {
+function stapelGrafikHtml(anzahl, { gewonnen = false, titel, klickbar = false } = {}) {
+  const klassen = [
+    'stapel-grafik',
+    gewonnen ? 'stapel-gewonnen' : 'stapel-nachzieh',
+    anzahl === 0 ? 'stapel-leer' : '',
+    klickbar ? 'stapel-gewonnen-klickbar' : '',
+  ].filter(Boolean).join(' ');
+  const aktion = klickbar ? ' data-aktion="zeige-gewonnene"' : '';
   return `
     <div class="stapel-gruppe">
-      <div class="stapel-grafik${gewonnen ? ' stapel-gewonnen' : ''}${anzahl === 0 ? ' stapel-leer' : ''}">
+      <div class="${klassen}"${aktion}>
         <span class="stapel-anzahl">${anzahl}</span>
       </div>
       <div class="stapel-titel">${titel}</div>
@@ -163,6 +170,7 @@ function renderGegnerTisch(staendeArray) {
     const sichtbareHandAnzahl = Math.max(0, s.handAnzahl - (liveHandAbzug[i] || 0));
     const gruppe = document.createElement('div');
     gruppe.className = 'gegner-hand-gruppe';
+    gruppe.dataset.spielerIndex = i;
     let rueckseiten = '';
     for (let k = 0; k < sichtbareHandAnzahl; k += 1) {
       rueckseiten += '<div class="karten-rueckseite"></div>';
@@ -179,14 +187,44 @@ function renderGegnerTisch(staendeArray) {
 }
 
 // Eigener Nachzieh- und Gewinn-Stapel ("Pocket") - immer sichtbar am eigenen
-// Platz, analog zu den Stapeln der Gegner.
+// Platz, analog zu den Stapeln der Gegner. Der eigene Gewinn-Stapel ist
+// anklickbar und zeigt eine kleine Vorschau der gewonnenen Karten.
 function renderEigenerTisch(stand) {
   const el = document.getElementById('eigener-tisch');
   if (!stand) { el.innerHTML = ''; return; }
   el.innerHTML = `
     ${stapelGrafikHtml(stand.nachziehAnzahl, { titel: 'Nachziehstapel' })}
-    ${stapelGrafikHtml(stand.gewonnenAnzahl, { gewonnen: true, titel: 'Gewonnen' })}`;
+    ${stapelGrafikHtml(stand.gewonnenAnzahl, { gewonnen: true, titel: 'Gewonnen', klickbar: true })}`;
+  const gewonnenEl = el.querySelector('[data-aktion="zeige-gewonnene"]');
+  if (gewonnenEl) {
+    gewonnenEl.addEventListener('click', () => socket.emit('gewonneneKartenAnfragen'));
+  }
 }
+
+const gewonneneVorschau = document.getElementById('gewonnene-vorschau');
+
+socket.on('gewonneneKartenAntwort', ({ karten }) => {
+  const liste = document.getElementById('gewonnene-vorschau-liste');
+  if (karten.length === 0) {
+    liste.innerHTML = '<p class="gewonnene-vorschau-leer">Noch keine Karten gewonnen.</p>';
+  } else {
+    liste.innerHTML = karten.map((karte) => `
+      <div class="gewonnene-vorschau-karte ${karte.typSymbol.toLowerCase()}">
+        <span class="typ-tag ${karte.typSymbol.toLowerCase()}">${karte.typSymbol}</span>
+        <span class="gewonnene-vorschau-name">${karte.name}</span>
+        <span class="gewonnene-vorschau-wert">${karte.gesamtstaerke}</span>
+      </div>`).join('');
+  }
+  gewonneneVorschau.classList.remove('versteckt');
+});
+
+document.getElementById('btn-vorschau-schliessen').addEventListener('click', () => {
+  gewonneneVorschau.classList.add('versteckt');
+});
+
+gewonneneVorschau.addEventListener('click', (e) => {
+  if (e.target === gewonneneVorschau) gewonneneVorschau.classList.add('versteckt');
+});
 
 // Gemeinsamer Pot in der Tischmitte - bleibt sichtbar, solange Karten darin
 // liegen (nicht nur waehrend des Rundenergebnis-Bildschirms).
@@ -314,6 +352,24 @@ function aktiviereAttributKlicks(karteEl) {
   });
 }
 
+// Meldet dem Server (rein kosmetisch), welche Karte man in der eigenen Hand
+// gerade ueberfliegt, damit Mitspieler im Online-Modus live sehen, wie man
+// durch die eigenen Karten "slidet" - ohne die Karte selbst zu verraten.
+function aktiviereHandHover(raster) {
+  raster.querySelectorAll('.hand-karte').forEach((el, i) => {
+    el.addEventListener('mouseenter', () => socket.emit('handHover', { index: i }));
+    el.addEventListener('mouseleave', () => socket.emit('handHover', { index: null }));
+  });
+}
+
+socket.on('gegnerHandHover', ({ spielerIndex, index }) => {
+  const gruppe = document.querySelector(`.gegner-hand-gruppe[data-spieler-index="${spielerIndex}"]`);
+  if (!gruppe) return;
+  gruppe.querySelectorAll('.karten-rueckseite').forEach((el, i) => {
+    el.classList.toggle('hover-live', i === index);
+  });
+});
+
 const eigeneHandBereich = document.getElementById('eigene-hand-bereich');
 
 function neueRundeTischLeeren() {
@@ -337,10 +393,12 @@ socket.on('waehleEigeneKarte', ({ hand }) => {
   raster.querySelectorAll('.hand-karte').forEach((el) => {
     el.addEventListener('click', () => {
       socket.emit('eigeneKarteWaehlen', { kartenName: el.dataset.name });
+      socket.emit('handHover', { index: null });
       eigeneHandBereich.classList.add('versteckt');
       statusZeile.textContent = 'Waehle eine Kategorie fuer diese Karte...';
     });
   });
+  aktiviereHandHover(raster);
 });
 
 socket.on('waehleKategorieFuerKarte', ({ karte, kategorien }) => {
@@ -420,10 +478,12 @@ socket.on('waehleAntwortkarte', ({ kategorie, kategorien, hand }) => {
   raster.querySelectorAll('.hand-karte').forEach((el) => {
     el.addEventListener('click', () => {
       socket.emit('antwortKarteWaehlen', { kartenName: el.dataset.name });
+      socket.emit('handHover', { index: null });
       antwortkarteBereich.classList.add('versteckt');
       statusZeile.textContent = 'Warte auf die anderen Spieler...';
     });
   });
+  aktiviereHandHover(raster);
 });
 
 // ---------- Ultimate ----------

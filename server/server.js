@@ -117,6 +117,12 @@ function sendeAnAlle(raum, ereignis, daten) {
   raum.spieler.forEach((_, i) => sendeAnSitz(raum, i, ereignis, daten));
 }
 
+function sendeAnAlleAusser(raum, ausgenommenIndex, ereignis, daten) {
+  raum.spieler.forEach((_, i) => {
+    if (i !== ausgenommenIndex) sendeAnSitz(raum, i, ereignis, daten);
+  });
+}
+
 function staende(raum) {
   return raum.spieler.map((s) => ({
     name: s.zustand.name,
@@ -453,6 +459,28 @@ io.on('connection', (socket) => {
     if (!(sitz in raum.antworten) || raum.antworten[sitz] !== null) return;
     raum.antworten[sitz] = !!ja;
     versucheRundeAufzuloesen(raum);
+  });
+
+  // Rein kosmetisch: laesst Mitspieler live sehen, welche Karte man gerade in
+  // der eigenen Hand ueberfliegt (ohne die Karte selbst zu verraten).
+  socket.on('handHover', ({ index } = {}) => {
+    const raum = raeume.get(socket.data.raumCode);
+    if (!raum) return;
+    sendeAnAlleAusser(raum, socket.data.sitz, 'gegnerHandHover', {
+      spielerIndex: socket.data.sitz,
+      index: Number.isInteger(index) ? index : null,
+    });
+  });
+
+  // Vorschau der eigenen gewonnenen Karten - nur an den anfragenden Spieler.
+  socket.on('gewonneneKartenAnfragen', () => {
+    const raum = raeume.get(socket.data.raumCode);
+    if (!raum) return;
+    const spieler = raum.spieler[socket.data.sitz];
+    if (!spieler) return;
+    socket.emit('gewonneneKartenAntwort', {
+      karten: spieler.zustand.gewonneneKarten.map(kartenDaten),
+    });
   });
 
   socket.on('disconnect', () => {
