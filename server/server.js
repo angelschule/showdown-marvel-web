@@ -235,6 +235,7 @@ function versucheRundeAufzuloesen(raum) {
     ultimateMeldung: ergebnis.ultimateMeldung,
     staende: staende(raum),
     runde: raum.spiel.runde,
+    potGroesse: raum.spiel.pot.length,
   };
   sendeAnAlle(raum, 'rundenErgebnis', payload);
 

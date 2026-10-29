@@ -74,15 +74,16 @@
       <div id="status-zeile" class="status-zeile"></div>
 
       <div id="eigene-karte-bereich" class="karten-bereich versteckt">
-        <h3 class="mini-titel">Deine oberste Karte</h3>
-        <div id="eigene-karte" class="spielkarte"></div>
-        <div id="kategorie-buttons" class="kategorie-buttons"></div>
+        <h3 class="mini-titel">Deine oberste Karte - klicken zum Waehlen</h3>
+        <div id="eigene-karte" class="spielkarte kompakt"></div>
       </div>
 
       <div id="antwortkarte-bereich" class="karten-bereich versteckt">
         <h3 class="mini-titel">Waehle deine Antwortkarte</h3>
         <p id="antwortkarte-hinweis" class="hinweis"></p>
-        <div id="hand-raster" class="hand-raster"></div>
+        <div class="hand-fan-wrapper">
+          <div id="hand-raster" class="hand-fan"></div>
+        </div>
       </div>
 
       <div id="ultimate-bereich" class="ultimate-bereich versteckt">
@@ -96,7 +97,13 @@
 
       <div id="ergebnis-bereich" class="ergebnis-bereich versteckt">
         <div class="impakt-titel" id="impakt-titel">IMPACT</div>
-        <div id="duell-raster" class="duell-raster"></div>
+        <div class="duell-zeile">
+          <div id="duell-raster" class="duell-raster"></div>
+          <div id="pot-anzeige" class="pot-anzeige versteckt">
+            <div class="pot-stapel"></div>
+            <div class="pot-label">POT<br /><span id="pot-anzahl">0</span></div>
+          </div>
+        </div>
         <p id="ultimate-meldung" class="ultimate-meldung"></p>
         <p id="ergebnis-text" class="ergebnis-text"></p>
       </div>

@@ -139,6 +139,24 @@ const statusZeile = document.getElementById('status-zeile');
 
 const MAX_WERT = 10;
 
+// Probiert nacheinander mehrere Dateiendungen fuer das Kartenbild durch, bevor
+// auf den generischen Platzhalter zurueckgefallen wird. So reicht es, eine
+// Bilddatei exakt "<bildSchluessel>.<eine dieser Endungen>" abzulegen - egal
+// in welchem Format sie erzeugt wurde.
+const BILD_ENDUNGEN = ['jpg', 'jpeg', 'png', 'webp'];
+
+function bildFallback(img) {
+  const naechsteIndex = BILD_ENDUNGEN.indexOf(img.dataset.endung) + 1;
+  const naechsteEndung = BILD_ENDUNGEN[naechsteIndex];
+  if (naechsteEndung) {
+    img.dataset.endung = naechsteEndung;
+    img.src = `images/${img.dataset.schluessel}.${naechsteEndung}`;
+  } else {
+    img.onerror = null;
+    img.closest('.spielkarte').classList.add('kein-bild');
+  }
+}
+
 // Generische, markenfreie Umriss-Icons. Kategorie-Icons zeigen, worum es in der
 // Runde geht (fuer alle Kartentypen gleich); die Typ-Icons sind der Fallback,
 // solange noch keine Kategorie feststeht (z. B. die eigene Karte vor der Wahl).
@@ -180,7 +198,8 @@ function kartenHtml(karte, besitzerLabel, kategorie) {
   return `
     <div class="bild-rahmen">
       <img class="karten-bild" src="images/${karte.bildSchluessel}.jpg"
-           onerror="this.onerror=null;this.closest('.spielkarte').classList.add('kein-bild');"
+           data-schluessel="${karte.bildSchluessel}" data-endung="jpg"
+           onerror="bildFallback(this)"
            alt="" />
       <div class="bild-platzhalter" aria-hidden="true">${platzhalterInhalt}</div>
       <span class="typ-tag ${typKlasse}">${karte.typSymbol}</span>
@@ -192,6 +211,71 @@ function kartenHtml(karte, besitzerLabel, kategorie) {
       <div class="gesamtstaerke-zeile">GESAMT ${karte.gesamtstaerke}</div>
     </div>
   `;
+}
+
+// Kompakte Darstellung ohne Textbeschriftung: nur die 6 Kategorie-Icons in
+// derselben Reihenfolge wie im Auswahl-Overlay, jedes mit seinem Wert darunter.
+// Das Bild traegt zusaetzlich das (zunaechst versteckte) Kategorie-Overlay -
+// kein separates Feld mehr unter der Karte.
+function kartenHtmlIconReihe(karte) {
+  const reihe = karte.werte
+    .map((wert, i) => {
+      const kategorie = KATEGORIEN_ANZEIGE[i] || '';
+      return `
+        <div class="icon-stat" title="${kategorie}">
+          <div class="icon-stat-icon">${KATEGORIE_ICONS[kategorie] || ''}</div>
+          <div class="icon-stat-wert">${wert}</div>
+        </div>`;
+    })
+    .join('');
+
+  const overlayButtons = KATEGORIEN_ANZEIGE
+    .map((kategorie) => `
+      <button class="kategorie-overlay-btn" data-kategorie="${kategorie}">
+        <span class="kategorie-overlay-icon">${KATEGORIE_ICONS[kategorie] || ''}</span>
+        <span class="kategorie-overlay-label">${kategorie}</span>
+      </button>`)
+    .join('');
+
+  return `
+    <div class="bild-rahmen">
+      <img class="karten-bild" src="images/${karte.bildSchluessel}.jpg"
+           data-schluessel="${karte.bildSchluessel}" data-endung="jpg"
+           onerror="bildFallback(this)"
+           alt="" />
+      <div class="bild-platzhalter" aria-hidden="true"><div class="kategorie-icon typ-icon">${TYP_ICONS[karte.typSymbol] || ''}</div></div>
+      <span class="typ-tag ${karte.typSymbol.toLowerCase()}">${karte.typSymbol}</span>
+      <div class="klick-hinweis">Klicken zum Waehlen</div>
+      <div class="kategorie-overlay versteckt">${overlayButtons}</div>
+    </div>
+    <div class="karte-info">
+      <div class="name">${karte.name}</div>
+      <div class="icon-stat-reihe">${reihe}</div>
+      <div class="gesamtstaerke-zeile">GESAMT ${karte.gesamtstaerke}</div>
+    </div>
+  `;
+}
+
+// Macht die Karte selbst zum Kategorie-Waehler: Hover hebt sie hervor, ein
+// Klick blendet das Icon-Raster (3 pro Reihe) direkt ueber dem Bild ein.
+function aktiviereKategorieOverlay(karteEl) {
+  const overlay = karteEl.querySelector('.kategorie-overlay');
+  const hinweis = karteEl.querySelector('.klick-hinweis');
+
+  karteEl.addEventListener('click', (e) => {
+    if (e.target.closest('.kategorie-overlay-btn')) return;
+    overlay.classList.toggle('versteckt');
+    hinweis.classList.toggle('versteckt');
+  });
+
+  overlay.querySelectorAll('.kategorie-overlay-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const kategorie = btn.dataset.kategorie;
+      socket.emit('kategorieWaehlen', { kategorie });
+      statusZeile.textContent = `Kategorie gewaehlt: ${kategorie} - warte auf Aufloesung...`;
+    });
+  });
 }
 
 function animiereBalken(scope) {
@@ -212,22 +296,9 @@ socket.on('deinZug', ({ eigeneKarte, kategorien, index }) => {
   renderScoreLeiste(letzteStaende, index);
 
   const karteEl = document.getElementById('eigene-karte');
-  karteEl.innerHTML = kartenHtml(eigeneKarte);
-  karteEl.className = `spielkarte ${eigeneKarte.typSymbol.toLowerCase()}`;
-  animiereBalken(karteEl);
-
-  const buttons = document.getElementById('kategorie-buttons');
-  buttons.innerHTML = '';
-  kategorien.forEach((kategorie) => {
-    const btn = document.createElement('button');
-    btn.textContent = kategorie;
-    btn.addEventListener('click', () => {
-      socket.emit('kategorieWaehlen', { kategorie });
-      buttons.innerHTML = '';
-      statusZeile.textContent = `Kategorie gewaehlt: ${kategorie} - warte auf Aufloesung...`;
-    });
-    buttons.appendChild(btn);
-  });
+  karteEl.innerHTML = kartenHtmlIconReihe(eigeneKarte);
+  karteEl.className = `spielkarte kompakt ${eigeneKarte.typSymbol.toLowerCase()}`;
+  aktiviereKategorieOverlay(karteEl);
 });
 
 socket.on('wartenAufSpieler', ({ name, index }) => {
@@ -321,6 +392,14 @@ socket.on('rundenErgebnis', (ergebnis) => {
     raster.appendChild(div);
     animiereBalken(div);
   });
+
+  const potAnzeige = document.getElementById('pot-anzeige');
+  if (ergebnis.potGroesse > 0) {
+    document.getElementById('pot-anzahl').textContent = ergebnis.potGroesse;
+    potAnzeige.classList.remove('versteckt');
+  } else {
+    potAnzeige.classList.add('versteckt');
+  }
 
   document.getElementById('ultimate-meldung').textContent = ergebnis.ultimateMeldung || '';
 

@@ -1,20 +1,22 @@
 # Kartenbilder
 
 Hier kannst du echte Bilder fuer die Karten ablegen. Jede Karte sucht automatisch nach
-einer Datei namens `<bildSchluessel>.jpg` in diesem Ordner, z. B.:
+einer Datei namens `<bildSchluessel>.<endung>` in diesem Ordner - der Code probiert dabei
+der Reihe nach `.jpg`, `.jpeg`, `.png` und `.webp` durch, bis eine davon existiert. Du musst
+also nur den Dateinamen treffen, das Format ist egal, z. B.:
 
-- `iron_man.jpg`
+- `iron_man.png`
 - `captain_america.jpg`
-- `avengers.jpg` (Team-Karte)
+- `avengers.png` (Team-Karte)
 
 Den exakten `bildSchluessel` einer Karte siehst du, wenn ein Bild fehlt (Platzhalter-Symbol
 wird angezeigt) - oder leite ihn aus dem Namen ab: klein geschrieben, Leerzeichen zu `_`,
 Umlaute zu ae/oe/ue, Sonderzeichen entfernt.
 
-Fehlt eine Datei, zeigt die Karte automatisch einen abstrakten Platzhalter (kein Marken-Logo,
-kein echtes Marvel-Bild) - kein Code muss dafuer angepasst werden.
+Fehlt jede Endung fuer eine Karte, zeigt sie automatisch einen abstrakten Platzhalter (kein
+Marken-Logo, kein echtes Marvel-Bild) - kein Code muss dafuer angepasst werden.
 
-Empfohlenes Format: JPG oder PNG, Hochformat oder quadratisch, mind. 400x400px.
+Empfohlenes Format: JPG, PNG oder WebP, Hochformat oder quadratisch, mind. 400x400px.
 
 **Wichtig:** Lade hier nur Bilder hoch, die du selbst erstellt hast oder fuer die du die
 Rechte hast (eigene Zeichnungen, lizenzfreie Stock-Bilder, KI-generierte generische
