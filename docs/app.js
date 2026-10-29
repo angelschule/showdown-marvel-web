@@ -13,7 +13,7 @@ const bildschirme = {
   ende: document.getElementById('ende-bildschirm'),
 };
 
-const chatWidget = document.getElementById('chat-widget');
+const menuWidget = document.getElementById('menu-widget');
 
 function zeigeBildschirm(name) {
   Object.values(bildschirme).forEach((el) => el.classList.add('versteckt'));
@@ -21,9 +21,9 @@ function zeigeBildschirm(name) {
   // Waehrend des eigentlichen Spiels keinen Platz fuer den Titel verschwenden -
   // soll sich moeglichst wie Vollbild anfuehlen.
   document.body.classList.toggle('im-spiel', name === 'spiel');
-  // Das Chatfenster ("wie am selben Tisch sitzen") gibt es erst, sobald ein
-  // Raum existiert - nicht auf dem Lade- oder Startbildschirm.
-  chatWidget.classList.toggle('versteckt', name === 'lade' || name === 'start');
+  // Menue + Chat ("wie am selben Tisch sitzen") gibt es erst, sobald ein Raum
+  // existiert - nicht auf dem Lade- oder Startbildschirm.
+  menuWidget.classList.toggle('versteckt', name === 'lade' || name === 'start');
 }
 
 socket.on('connect', () => {
@@ -605,30 +605,41 @@ socket.on('spielerVerbindungGetrennt', ({ name }) => {
   zeigeBildschirm('ende');
 });
 
-// ---------- Chat: wie am selben Tisch sitzen ----------
+// ---------- Menue oben rechts: Chat + Einstellungen - wie am selben Tisch ----------
 
-const chatFenster = document.getElementById('chat-fenster');
+const menuFenster = document.getElementById('menu-fenster');
 const chatNachrichten = document.getElementById('chat-nachrichten');
 const chatBadge = document.getElementById('chat-badge');
 let chatUngelesen = 0;
 
-function chatOeffnen() {
-  chatFenster.classList.remove('versteckt');
+function menuOeffnen() {
+  menuFenster.classList.remove('versteckt');
   chatUngelesen = 0;
   chatBadge.classList.add('versteckt');
-  document.getElementById('chat-eingabe').focus();
+  const aktiverTab = document.querySelector('.menu-tab.aktiv')?.dataset.tab;
+  if (aktiverTab === 'chat') document.getElementById('chat-eingabe').focus();
 }
 
-document.getElementById('chat-toggle').addEventListener('click', () => {
-  if (chatFenster.classList.contains('versteckt')) {
-    chatOeffnen();
+document.getElementById('menu-toggle').addEventListener('click', () => {
+  if (menuFenster.classList.contains('versteckt')) {
+    menuOeffnen();
   } else {
-    chatFenster.classList.add('versteckt');
+    menuFenster.classList.add('versteckt');
   }
 });
 
-document.getElementById('chat-schliessen').addEventListener('click', () => {
-  chatFenster.classList.add('versteckt');
+document.getElementById('menu-schliessen').addEventListener('click', () => {
+  menuFenster.classList.add('versteckt');
+});
+
+document.querySelectorAll('.menu-tab').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.menu-tab').forEach((t) => t.classList.remove('aktiv'));
+    document.querySelectorAll('.menu-tab-inhalt').forEach((t) => t.classList.add('versteckt'));
+    tab.classList.add('aktiv');
+    document.getElementById(`menu-tab-${tab.dataset.tab}`).classList.remove('versteckt');
+    if (tab.dataset.tab === 'chat') document.getElementById('chat-eingabe').focus();
+  });
 });
 
 document.getElementById('chat-form').addEventListener('submit', (e) => {
@@ -658,9 +669,138 @@ function chatNachrichtAnzeigen(name, text, eigene) {
 
 socket.on('chatNachricht', ({ spielerIndex, name, text }) => {
   chatNachrichtAnzeigen(name, text, spielerIndex === meinIndex);
-  if (chatFenster.classList.contains('versteckt')) {
+  if (menuFenster.classList.contains('versteckt')) {
     chatUngelesen += 1;
     chatBadge.textContent = chatUngelesen;
     chatBadge.classList.remove('versteckt');
+  }
+});
+
+// ---------- Einstellungen: Musik, Lautstaerke, zurueck zum Start ----------
+
+const hintergrundmusik = document.getElementById('hintergrundmusik');
+let musikAn = false;
+
+document.getElementById('btn-musik').addEventListener('click', (e) => {
+  musikAn = !musikAn;
+  if (musikAn) {
+    hintergrundmusik.play().catch(() => { musikAn = false; e.target.textContent = '🎵 Musik: Aus'; });
+    e.target.textContent = '🎵 Musik: An';
+    e.target.classList.add('aktiv');
+  } else {
+    hintergrundmusik.pause();
+    e.target.textContent = '🎵 Musik: Aus';
+    e.target.classList.remove('aktiv');
+  }
+});
+
+document.getElementById('regler-lautstaerke').addEventListener('input', (e) => {
+  hintergrundmusik.volume = Number(e.target.value) / 100;
+});
+hintergrundmusik.volume = 0.5;
+
+document.getElementById('btn-zurueck-lobby').addEventListener('click', () => {
+  if (confirm('Spiel wirklich verlassen und zum Start zurueckkehren?')) {
+    location.reload();
+  }
+});
+
+// ---------- Sprachchat: WebRTC-Mesh, der Server reicht nur die Signalisierung
+// durch (Angebote/Antworten/ICE-Kandidaten) wie ein Vermittlungsschrank - kein
+// eigener TURN-Server, daher am zuverlaessigsten im selben Netzwerk/direkt. ----------
+
+const STUN_SERVER = { urls: 'stun:stun.l.google.com:19302' };
+let sprachAktiv = false;
+let eigenerAudioStream = null;
+const sprachVerbindungen = {};
+const sprachAudioElemente = {};
+
+function erzeugePeerVerbindung(spielerIndex) {
+  const pc = new RTCPeerConnection({ iceServers: [STUN_SERVER] });
+  if (eigenerAudioStream) {
+    eigenerAudioStream.getTracks().forEach((track) => pc.addTrack(track, eigenerAudioStream));
+  }
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      socket.emit('sprachSignal', { an: spielerIndex, daten: { typ: 'kandidat', kandidat: e.candidate } });
+    }
+  };
+  pc.ontrack = (e) => {
+    let audio = sprachAudioElemente[spielerIndex];
+    if (!audio) {
+      audio = document.createElement('audio');
+      audio.autoplay = true;
+      document.body.appendChild(audio);
+      sprachAudioElemente[spielerIndex] = audio;
+    }
+    audio.srcObject = e.streams[0];
+  };
+  sprachVerbindungen[spielerIndex] = pc;
+  return pc;
+}
+
+function sprachVerbindungSchliessen(spielerIndex) {
+  sprachVerbindungen[spielerIndex]?.close();
+  delete sprachVerbindungen[spielerIndex];
+  const audio = sprachAudioElemente[spielerIndex];
+  if (audio) {
+    audio.srcObject = null;
+    audio.remove();
+    delete sprachAudioElemente[spielerIndex];
+  }
+}
+
+async function sprachVerbindungStarten(spielerIndex) {
+  const pc = erzeugePeerVerbindung(spielerIndex);
+  const angebot = await pc.createOffer();
+  await pc.setLocalDescription(angebot);
+  socket.emit('sprachSignal', { an: spielerIndex, daten: { typ: 'angebot', beschreibung: angebot } });
+}
+
+// Bei Beitritt: Liste der schon Anwesenden -> wir rufen sie an (verhindert,
+// dass beide Seiten gleichzeitig ein Angebot schicken).
+socket.on('sprachTeilnehmerListe', ({ teilnehmer }) => {
+  teilnehmer.forEach((i) => sprachVerbindungStarten(i));
+});
+
+socket.on('sprachTeilnehmerVerlassen', ({ spielerIndex }) => {
+  sprachVerbindungSchliessen(spielerIndex);
+});
+
+socket.on('sprachSignal', async ({ von, daten }) => {
+  let pc = sprachVerbindungen[von];
+  if (daten.typ === 'angebot') {
+    if (!pc) pc = erzeugePeerVerbindung(von);
+    await pc.setRemoteDescription(new RTCSessionDescription(daten.beschreibung));
+    const antwort = await pc.createAnswer();
+    await pc.setLocalDescription(antwort);
+    socket.emit('sprachSignal', { an: von, daten: { typ: 'antwort', beschreibung: antwort } });
+  } else if (daten.typ === 'antwort') {
+    if (pc) await pc.setRemoteDescription(new RTCSessionDescription(daten.beschreibung));
+  } else if (daten.typ === 'kandidat' && pc) {
+    try { await pc.addIceCandidate(daten.kandidat); } catch { /* Kandidat kam evtl. zu spaet - ignorieren */ }
+  }
+});
+
+document.getElementById('btn-sprachchat').addEventListener('click', async (e) => {
+  if (!sprachAktiv) {
+    try {
+      eigenerAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      alert('Mikrofon-Zugriff wurde verweigert oder ist auf diesem Geraet nicht verfuegbar.');
+      return;
+    }
+    sprachAktiv = true;
+    e.currentTarget.textContent = '🎙️ Sprachchat: An';
+    e.currentTarget.classList.add('aktiv');
+    socket.emit('sprachBeitreten');
+  } else {
+    sprachAktiv = false;
+    e.currentTarget.textContent = '🎙️ Sprachchat: Aus';
+    e.currentTarget.classList.remove('aktiv');
+    socket.emit('sprachVerlassen');
+    Object.keys(sprachVerbindungen).forEach((i) => sprachVerbindungSchliessen(Number(i)));
+    eigenerAudioStream?.getTracks().forEach((t) => t.stop());
+    eigenerAudioStream = null;
   }
 });

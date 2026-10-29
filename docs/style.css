@@ -42,13 +42,41 @@ body {
 }
 
 /* Waehrend des Spiels verschwindet der Titel - mehr Platz fuer den Tisch,
-   fuehlt sich dadurch eher nach Vollbild an. */
+   fuehlt sich dadurch eher nach Vollbild an. Der Tisch ist zudem auf die
+   Fensterhoehe fixiert statt die ganze Seite scrollen zu lassen - nur wenn
+   wirklich zu viel Inhalt da ist, scrollt der Tisch selbst (nicht die Seite). */
 body.im-spiel {
-  padding-top: 10px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 body.im-spiel .kopfzeile {
   display: none;
+}
+
+body.im-spiel #app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+body.im-spiel #spiel-bildschirm {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden auto;
+  padding: 10px 22px 14px;
+  gap: 6px;
+}
+
+body.im-spiel .hand-fan-wrapper {
+  padding-top: 34px;
+}
+
+body.im-spiel .karten-bereich {
+  gap: 8px;
 }
 
 /* Kino-Vignette: dunklere Raender, heller in der Mitte - statt Comic-Halbton */
@@ -165,6 +193,15 @@ body.im-spiel .kopfzeile {
   justify-content: center;
   position: relative;
   overflow: hidden;
+}
+
+.lade-artwork-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
 }
 
 /* Schimmer deutet an, dass hier spaeter ein echtes Artwork hinkommt */
@@ -1337,12 +1374,12 @@ input[type="text"]:focus {
   box-shadow: 0 0 18px rgba(212, 175, 100, 0.3);
 }
 
-/* ---------- Chat: wie am selben Tisch mit dem Mitspieler reden ---------- */
+/* ---------- Menue oben rechts: Chat + Einstellungen - wie am selben Tisch ---------- */
 
-.chat-widget {
+.menu-widget {
   position: fixed;
-  right: 18px;
-  bottom: 18px;
+  top: 14px;
+  right: 14px;
   z-index: 40;
   display: flex;
   flex-direction: column;
@@ -1350,26 +1387,31 @@ input[type="text"]:focus {
   gap: 10px;
 }
 
-.chat-toggle {
+.menu-toggle {
   position: relative;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
   border: 1px solid rgba(201, 163, 95, 0.4);
   background: linear-gradient(165deg, var(--panel), #08070a);
   color: var(--gold-hell);
-  font-size: 1.3rem;
   cursor: pointer;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+}
+
+.menu-toggle-label {
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
 }
 
 .chat-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -6px;
+  right: -6px;
   min-width: 18px;
   height: 18px;
   padding: 0 4px;
@@ -1384,9 +1426,9 @@ input[type="text"]:focus {
   justify-content: center;
 }
 
-.chat-fenster {
-  width: 280px;
-  height: 340px;
+.menu-fenster {
+  width: 300px;
+  height: 380px;
   display: flex;
   flex-direction: column;
   background: linear-gradient(165deg, var(--panel), #08070a);
@@ -1396,16 +1438,35 @@ input[type="text"]:focus {
   overflow: hidden;
 }
 
-.chat-kopf {
+.menu-kopf {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  font-family: var(--font-display);
-  letter-spacing: 0.08em;
-  color: var(--gold-hell);
+  padding: 6px 6px 6px 10px;
   border-bottom: 1px solid var(--panel-rand);
   flex-shrink: 0;
+}
+
+.menu-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.menu-tab {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+  font-size: 0.78rem;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.menu-tab.aktiv {
+  color: var(--gold-hell);
+  background: rgba(201, 163, 95, 0.12);
 }
 
 .chat-schliessen {
@@ -1418,6 +1479,13 @@ input[type="text"]:focus {
 }
 
 .chat-schliessen:hover { color: var(--gold-hell); }
+
+.menu-tab-inhalt {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 
 .chat-nachrichten {
   flex: 1;
@@ -1485,6 +1553,59 @@ input[type="text"]:focus {
   font-size: 0.78rem;
 }
 
+#menu-tab-einstellungen {
+  padding: 14px;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.menu-zeile-btn {
+  width: 100%;
+  text-align: left;
+  background: #0b0a0f;
+  border: 1px solid var(--panel-rand);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.menu-zeile-btn:hover { border-color: var(--gold); }
+.menu-zeile-btn.aktiv { border-color: var(--gold); color: var(--gold-hell); }
+
+.menu-hinweis {
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.4;
+  margin: -4px 0 0;
+}
+
+.menu-zeile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.menu-zeile label {
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.menu-zeile input[type="range"] {
+  width: 100%;
+  accent-color: var(--gold);
+}
+
+.menu-zurueck {
+  margin-top: auto;
+  width: 100%;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 480px) {
@@ -1494,8 +1615,8 @@ input[type="text"]:focus {
   .duell-zeile { flex-direction: column; }
   .hand-karte { flex-basis: 108px; max-width: 108px; margin-left: -36px; }
   .karten-rueckseite { width: 32px; height: 46px; margin-left: -16px; }
-  .chat-widget { right: 10px; bottom: 10px; }
-  .chat-fenster { width: calc(100vw - 20px); max-width: 320px; height: 300px; }
+  .menu-widget { top: 8px; right: 8px; }
+  .menu-fenster { width: calc(100vw - 16px); max-width: 320px; height: 70vh; }
 }
 
 @media (hover: none) {

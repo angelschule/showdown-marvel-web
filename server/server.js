@@ -353,6 +353,7 @@ io.on('connection', (socket) => {
       kartenAuswahl: new Map(),
       antwortenAusstehend: new Set(),
       antworten: null,
+      sprachTeilnehmer: new Set(),
     };
     raeume.set(code, raum);
     socket.join(code);
@@ -375,6 +376,7 @@ io.on('connection', (socket) => {
       kartenAuswahl: new Map(),
       antwortenAusstehend: new Set(),
       antworten: null,
+      sprachTeilnehmer: new Set(),
     };
     raeume.set(code, raum);
     socket.join(code);
@@ -488,6 +490,35 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Sprachchat (WebRTC): der Server versteht nichts von Audio, er reicht nur
+  // die Signalisierung (Angebote/Antworten/ICE-Kandidaten) zwischen den
+  // Sitzen im selben Raum durch - wie ein Vermittlungsschrank.
+  socket.on('sprachBeitreten', () => {
+    const raum = raeume.get(socket.data.raumCode);
+    if (!raum) return;
+    const eigenerSitz = socket.data.sitz;
+    const bestehende = [...raum.sprachTeilnehmer];
+    raum.sprachTeilnehmer.add(eigenerSitz);
+    // Der neu Beigetretene bekommt die Liste der schon Anwesenden und
+    // initiiert zu jedem von ihnen die Verbindung (verhindert, dass beide
+    // Seiten gleichzeitig ein Angebot schicken).
+    socket.emit('sprachTeilnehmerListe', { teilnehmer: bestehende });
+    sendeAnAlleAusser(raum, eigenerSitz, 'sprachTeilnehmerBeigetreten', { spielerIndex: eigenerSitz });
+  });
+
+  socket.on('sprachVerlassen', () => {
+    const raum = raeume.get(socket.data.raumCode);
+    if (!raum) return;
+    raum.sprachTeilnehmer.delete(socket.data.sitz);
+    sendeAnAlleAusser(raum, socket.data.sitz, 'sprachTeilnehmerVerlassen', { spielerIndex: socket.data.sitz });
+  });
+
+  socket.on('sprachSignal', ({ an, daten } = {}) => {
+    const raum = raeume.get(socket.data.raumCode);
+    if (!raum || !Number.isInteger(an)) return;
+    sendeAnSitz(raum, an, 'sprachSignal', { von: socket.data.sitz, daten });
+  });
+
   // Vorschau der eigenen gewonnenen Karten - nur an den anfragenden Spieler.
   socket.on('gewonneneKartenAnfragen', () => {
     const raum = raeume.get(socket.data.raumCode);
@@ -504,6 +535,11 @@ io.on('connection', (socket) => {
     if (!code) return;
     const raum = raeume.get(code);
     if (!raum) return;
+
+    if (raum.sprachTeilnehmer?.has(socket.data.sitz)) {
+      raum.sprachTeilnehmer.delete(socket.data.sitz);
+      sendeAnAlleAusser(raum, socket.data.sitz, 'sprachTeilnehmerVerlassen', { spielerIndex: socket.data.sitz });
+    }
 
     if (raum.phase === 'lobby') {
       raum.spieler = raum.spieler.filter((s) => s.socketId !== socket.id);

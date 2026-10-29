@@ -22,3 +22,18 @@ Empfohlenes Format: JPG, PNG oder WebP, Hochformat oder quadratisch, mind. 400x4
 Rechte hast (eigene Zeichnungen, lizenzfreie Stock-Bilder, KI-generierte generische
 Superhelden-Illustrationen). Keine echten Marvel-Comic-/Film-Bilder - das waere eine
 Urheberrechtsverletzung, auch in einem privaten Repo.
+
+## Artwork fuer den Ladebildschirm (Live-Animation)
+
+Lege eine kurze, loop-faehige Videodatei hier als `lade-artwork.mp4` ab
+(`docs/images/lade-artwork.mp4`) - sie wird auf dem Ladebildschirm automatisch
+stumm und in Dauerschleife abgespielt (siehe `#lade-artwork-video` in
+`index.html`). Bis die Datei existiert, bleibt dort einfach der
+Platzhalter-Icon mit Schimmer-Effekt sichtbar, kein Code muss angepasst werden.
+
+## Hintergrundmusik
+
+Lege eine MP3-Datei unter `docs/audio/musik.mp3` ab (Ordner `audio` muss neu
+angelegt werden) - der Musik-Knopf im Menue oben rechts spielt sie dann in
+Dauerschleife ab, mit dem Lautstaerke-Regler daneben. Ohne Datei bleibt der
+Knopf einfach wirkungslos (kein Fehler).
